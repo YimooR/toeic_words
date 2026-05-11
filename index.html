@@ -1,0 +1,1484 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TOEIC 单词背诵系统</title>
+<!-- 引入Chart.js用于绘制图表 -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+<style>
+/* 全局样式重置与基础变量 */
+:root {
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --secondary: #64748b;
+  --secondary-hover: #475569;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  --background: #f8fafc;
+  --card-bg: #ffffff;
+  --border: #e2e8f0;
+  --text-primary: #0f172a;
+  --text-secondary: #64748b;
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+  --radius-lg: 16px;
+  --radius-md: 12px;
+  --radius-sm: 8px;
+  --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  background: var(--background);
+  color: var(--text-primary);
+  line-height: 1.6;
+  padding: 16px;
+  min-height: 100vh;
+}
+
+.container {
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+/* 卡片通用样式 */
+.card {
+  background: var(--card-bg);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  margin-bottom: 20px;
+  box-shadow: var(--shadow-md);
+  transition: var(--transition);
+}
+
+.card:hover {
+  box-shadow: var(--shadow-lg);
+}
+
+/* 标题样式 */
+h1 {
+  font-size: clamp(1.8rem, 4vw, 2.5rem);
+  font-weight: 700;
+  margin-bottom: 8px;
+  background: linear-gradient(135deg, var(--primary), #7c3aed);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+h2 {
+  font-size: clamp(1.2rem, 3vw, 1.5rem);
+  font-weight: 600;
+  margin-bottom: 16px;
+  color: var(--text-primary);
+}
+
+h3 {
+  font-size: clamp(1rem, 2vw, 1.2rem);
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: var(--text-primary);
+}
+
+/* 可折叠区域样式 */
+.collapsible-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  cursor: pointer;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 16px;
+  transition: var(--transition);
+}
+
+.collapsible-header:hover {
+  color: var(--primary);
+}
+
+.collapsible-header h3 {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.collapse-icon {
+  transition: var(--transition);
+  font-size: 1.2rem;
+  color: var(--secondary);
+}
+
+.collapsed .collapse-icon {
+  transform: rotate(-90deg);
+}
+
+.collapsible-content {
+  overflow: hidden;
+  transition: max-height 0.5s ease-in-out, opacity 0.3s ease-in-out;
+  max-height: 1000px;
+  opacity: 1;
+}
+
+.collapsed .collapsible-content {
+  max-height: 0;
+  opacity: 0;
+  margin-bottom: 0;
+}
+
+/* 导入区域样式 */
+.import-area {
+  background: var(--background);
+  border-radius: var(--radius-md);
+  padding: 20px;
+  border: 1px dashed var(--border);
+}
+
+.auto-import-status {
+  padding: 12px 16px;
+  border-radius: var(--radius-sm);
+  margin-bottom: 16px;
+  text-align: center;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.auto-import-status.success {
+  background: #dcfce7;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+}
+
+.auto-import-status.info {
+  background: #dbeafe;
+  color: #1e40af;
+  border: 1px solid #bfdbfe;
+}
+
+.auto-import-status.error {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+}
+
+.drop-zone {
+  border: 2px dashed var(--border);
+  border-radius: var(--radius-md);
+  padding: 24px;
+  text-align: center;
+  margin-bottom: 16px;
+  transition: var(--transition);
+  cursor: pointer;
+}
+
+.drop-zone:hover, .drop-zone.active {
+  border-color: var(--primary);
+  background: #eff6ff;
+}
+
+.drop-zone input[type="file"] {
+  display: none;
+}
+
+/* 按钮样式 */
+button {
+  padding: 10px 16px;
+  border: none;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 500;
+  transition: var(--transition);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  white-space: nowrap;
+}
+
+button.primary {
+  background: var(--primary);
+  color: white;
+}
+
+button.primary:hover {
+  background: var(--primary-hover);
+  transform: translateY(-1px);
+}
+
+button.secondary {
+  background: var(--secondary);
+  color: white;
+}
+
+button.secondary:hover {
+  background: var(--secondary-hover);
+  transform: translateY(-1px);
+}
+
+button.outline {
+  background: transparent;
+  color: var(--text-primary);
+  border: 1px solid var(--border);
+}
+
+button.outline:hover {
+  background: var(--background);
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+button.success {
+  background: var(--success);
+  color: white;
+}
+
+button.success:hover {
+  background: #059669;
+  transform: translateY(-1px);
+}
+
+.button-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+/* 输入框样式 */
+input {
+  width: 100%;
+  padding: 12px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  font-size: 1rem;
+  transition: var(--transition);
+  background: var(--card-bg);
+}
+
+input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+/* 进度条样式 */
+.progress-bar {
+  width: 100%;
+  height: 8px;
+  background: var(--border);
+  border-radius: 999px;
+  overflow: hidden;
+  margin: 20px 0;
+}
+
+.progress {
+  height: 100%;
+  background: linear-gradient(90deg, var(--primary), #7c3aed);
+  width: 0%;
+  transition: width 0.5s ease-in-out;
+  border-radius: 999px;
+}
+
+/* 统计卡片样式 */
+.stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 16px;
+  margin-top: 20px;
+}
+
+.stat-box {
+  background: var(--background);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  text-align: center;
+  transition: var(--transition);
+  cursor: pointer;
+}
+
+.stat-box:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-sm);
+}
+
+.stat-box.active {
+  background: #eff6ff;
+  border: 2px solid var(--primary);
+}
+
+.stat-box h3 {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin-bottom: 8px;
+  font-weight: 500;
+}
+
+.stat-box p {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--primary);
+  transition: var(--transition);
+}
+
+.stat-box:hover p {
+  color: var(--primary-hover);
+}
+
+/* 学习列表标题 */
+.learning-list-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+
+.learning-list-title h2 {
+  margin: 0;
+}
+
+/* 单词卡片样式 */
+.word-card {
+  border: 2px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 40px 24px;
+  text-align: center;
+  cursor: pointer;
+  transition: var(--transition);
+  min-height: 300px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+}
+
+.word-card:hover {
+  border-color: var(--primary);
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
+}
+
+.word-card:active {
+  transform: translateY(0);
+}
+
+#indexText {
+  font-size: 0.9rem;
+  color: var(--text-secondary);
+  margin-bottom: 20px;
+}
+
+.word {
+  font-size: clamp(2.5rem, 8vw, 4rem);
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: var(--text-primary);
+}
+
+.transliteration {
+  font-size: clamp(1.2rem, 4vw, 1.8rem);
+  color: var(--text-secondary);
+  margin-bottom: 24px;
+  font-style: italic;
+}
+
+#hint {
+  font-size: 0.95rem;
+  color: var(--text-secondary);
+  margin-top: 20px;
+}
+
+/* 详情区域样式 */
+#details {
+  width: 100%;
+  margin-top: 24px;
+  text-align: left;
+}
+
+.info-box {
+  background: var(--background);
+  border-radius: var(--radius-md);
+  padding: 16px;
+  margin-top: 16px;
+  border-left: 4px solid var(--primary);
+}
+
+.info-box h3 {
+  font-size: 1rem;
+  margin-bottom: 8px;
+  color: var(--primary);
+}
+
+/* 控制按钮区域 */
+.controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 24px;
+  justify-content: center;
+}
+
+/* 列表样式 */
+.list-item {
+  background: var(--background);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  margin-bottom: 8px;
+  transition: var(--transition);
+  border-left: 3px solid transparent;
+}
+
+.list-item:hover {
+  border-left-color: var(--primary);
+  transform: translateX(2px);
+}
+
+.list-item strong {
+  color: var(--text-primary);
+  font-size: 1.1rem;
+}
+
+.list-item div {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin-top: 4px;
+}
+
+.empty {
+  background: var(--background);
+  padding: 20px;
+  border-radius: var(--radius-md);
+  color: var(--text-secondary);
+  text-align: center;
+  font-style: italic;
+}
+
+/* 模态框样式 */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  opacity: 0;
+  visibility: hidden;
+  transition: var(--transition);
+  padding: 20px;
+}
+
+.modal-overlay.active {
+  opacity: 1;
+  visibility: visible;
+}
+
+.modal {
+  background: var(--card-bg);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  max-width: 600px;
+  width: 100%;
+  max-height: 80vh;
+  overflow-y: auto;
+  box-shadow: var(--shadow-xl);
+  transform: translateY(20px);
+  transition: var(--transition);
+}
+
+.modal-overlay.active .modal {
+  transform: translateY(0);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  cursor: pointer;
+  color: var(--text-secondary);
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+}
+
+.modal-close:hover {
+  background: var(--background);
+  color: var(--text-primary);
+}
+
+/* 图表容器 */
+.chart-container {
+  position: relative;
+  height: 300px;
+  width: 100%;
+}
+
+/* 自动播放间隔设置 */
+.interval-setting {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.interval-setting input {
+  width: 80px;
+  text-align: center;
+}
+
+/* 响应式媒体查询 */
+@media (max-width: 600px) {
+  body {
+    padding: 12px;
+  }
+  
+  .card {
+    padding: 20px;
+  }
+  
+  .stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .word {
+    font-size: 2.2rem;
+  }
+  
+  .transliteration {
+    font-size: 1.4rem;
+  }
+  
+  .controls {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+  
+  .controls button {
+    width: 100%;
+  }
+  
+  .button-group {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+  }
+  
+  .modal {
+    padding: 20px;
+  }
+  
+  .chart-container {
+    height: 250px;
+  }
+  
+  .learning-list-title {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+}
+
+@media (max-width: 400px) {
+  .stats {
+    grid-template-columns: 1fr;
+  }
+  
+  .controls {
+    grid-template-columns: 1fr;
+  }
+  
+  .button-group {
+    grid-template-columns: 1fr;
+  }
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+
+  <!-- 头部卡片 -->
+  <div class="card">
+    <h1>TOEIC 单词背诵系统</h1>
+    <p style="color: var(--text-secondary); margin-bottom: 16px;">自动导入本地Toeic_words.csv | 收藏夹、错题本、学习记录永久保存</p>
+    
+    <!-- 自动导入状态显示（初始为空） -->
+    <div id="autoImportStatus" class="auto-import-status" style="display: none;"></div>
+
+    <!-- 可折叠的单词库管理区域 -->
+    <div class="collapsible" id="wordLibraryManager">
+      <div class="collapsible-header" onclick="toggleCollapsible('wordLibraryManager')">
+        <h3><span>📚</span> 单词库管理</h3>
+        <span class="collapse-icon">▼</span>
+      </div>
+      <div class="collapsible-content">
+        <div class="import-area">
+          <div id="dropZone" class="drop-zone">
+            <p>拖放CSV文件到此处导入</p>
+            <p style="margin: 8px 0; color: var(--text-secondary);">或</p>
+            <button class="primary" onclick="document.getElementById('csvFileInput').click()">选择文件</button>
+            <input type="file" id="csvFileInput" accept=".csv" onchange="importCSV(event)">
+          </div>
+          
+          <div class="button-group">
+            <button class="outline" onclick="exportCSV()">导出当前单词库</button>
+            <button class="outline" onclick="forgetFileHandle()">忘记自动导入文件</button>
+            <button class="outline" onclick="resetMastered()">重置学习进度</button>
+          </div>
+          
+          <p style="margin: 12px 0 0 0; color: var(--text-secondary); font-size: 0.9rem;">
+            CSV格式：No,words,transliteration,chinese,example sentence（UTF-8编码）
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 进度条 -->
+    <div class="progress-bar">
+      <div class="progress" id="progress"></div>
+    </div>
+
+    <!-- 统计卡片（可点击切换学习列表） -->
+    <div class="stats">
+      <div class="stat-box" id="unmasteredStat" onclick="switchToList('unmastered')">
+        <h3>未学单词</h3>
+        <p id="unmasteredCount">0</p>
+      </div>
+      <div class="stat-box" id="favoritesStat" onclick="switchToList('favorites')">
+        <h3>收藏数量</h3>
+        <p id="favoriteCount">0</p>
+      </div>
+      <div class="stat-box" id="wrongWordsStat" onclick="switchToList('wrongWords')">
+        <h3>错题数量</h3>
+        <p id="wrongCount">0</p>
+      </div>
+      <div class="stat-box" onclick="showDailyChartModal()">
+        <h3>今日学习</h3>
+        <p id="dailyCount">0</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- 单词学习区域 -->
+  <div class="card">
+    <div class="learning-list-title">
+      <h2 id="currentListTitle">📚 未学单词</h2>
+      <button class="outline" id="returnBtn" style="display: none;" onclick="switchToList('unmastered')">
+        ← 返回未学单词
+      </button>
+    </div>
+    
+    <input id="searchInput" placeholder="🔍 搜索单词...">
+
+    <div class="controls" style="margin-bottom: 20px;">
+      <button class="outline" onclick="shuffleWords()">🔀 打乱顺序</button>
+      <button class="outline" onclick="toggleAutoPlay()" id="autoBtn">▶️ 自动播放</button>
+    </div>
+    
+    <!-- 自动播放间隔设置 -->
+    <div class="interval-setting">
+      <label for="intervalInput">自动播放间隔：</label>
+      <input type="number" id="intervalInput" min="1" max="30" value="4" step="0.5">
+      <span>秒</span>
+      <button class="outline" onclick="updateInterval()">应用</button>
+    </div>
+
+    <div class="word-card" onclick="toggleReveal()">
+      <div id="indexText">1 / 1</div>
+      <div class="word" id="word">bill</div>
+      <div class="transliteration" id="transliteration">/bɪl/</div>
+      
+      <button class="primary" onclick="speakWord(event)">🔊 发音</button>
+      
+      <div id="hint">点击卡片查看释义和例句</div>
+
+      <div id="details" style="display:none">
+        <div class="info-box">
+          <h3>中文释义</h3>
+          <div id="chinese"></div>
+        </div>
+
+        <div class="info-box">
+          <h3>例句</h3>
+          <div id="example"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="controls">
+      <button class="primary" onclick="markKnown()">✅ 认识</button>
+      <button class="secondary" onclick="markUnknown()">❌ 不熟</button>
+      <button class="outline" onclick="toggleFavorite()">⭐ 收藏</button>
+      <button class="outline" onclick="prevWord()">⬅️ 上一个</button>
+      <button class="outline" onclick="nextWord()">➡️ 下一个</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- 每日学习折线图模态框 -->
+<div class="modal-overlay" id="dailyChartModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>📈 每日学习统计</h2>
+      <button class="modal-close" onclick="closeModal('dailyChartModal')">&times;</button>
+    </div>
+    <div class="chart-container">
+      <canvas id="dailyChart"></canvas>
+    </div>
+    <div style="text-align: center; margin-top: 20px; color: var(--text-secondary);">
+      <p>总学习天数：<span id="totalDays">0</span> 天</p>
+      <p>累计学习单词：<span id="totalLearned">0</span> 个</p>
+      <p>日均学习：<span id="avgDaily">0</span> 个/天</p>
+    </div>
+  </div>
+</div>
+
+<script>
+// 核心数据结构
+let wordDatabase = JSON.parse(localStorage.getItem("wordDatabase") || '{}');
+let words = Object.keys(wordDatabase).length > 0 ? Object.keys(wordDatabase) : [
+  "bill","charge","strategy","comply","negotiate"
+];
+
+// 默认单词库
+const defaultWordInfo = {
+  bill:{transliteration:"/bɪl/", chinese:"账单；法案", example:"Please pay the bill before leaving."},
+  charge:{transliteration:"/tʃɑːrdʒ/", chinese:"收费；充电；指控", example:"The company will charge extra for delivery."},
+  strategy:{transliteration:"/ˈstrætədʒi/", chinese:"策略；战略", example:"We need a better strategy to win the market."},
+  comply:{transliteration:"/kəmˈplaɪ/", chinese:"遵守", example:"All employees must comply with company safety rules."},
+  negotiate:{transliteration:"/nɪˈɡəʊʃieɪt/", chinese:"谈判；协商", example:"They negotiated a 10% discount on the bulk order."}
+};
+
+wordDatabase = Object.assign({}, defaultWordInfo, wordDatabase);
+
+// 学习列表状态
+let currentList = 'unmastered'; // 当前显示的列表：unmastered, favorites, wrongWords
+let deck = []; // 当前学习队列
+let index = 0;
+let reveal = false;
+let autoPlay = false;
+let timer = null;
+let dailyChart = null; // 每日学习折线图实例
+let autoPlayInterval = 4000; // 默认自动播放间隔4秒
+
+// 用户数据
+let favorites = JSON.parse(localStorage.getItem("favorites") || "[]");
+let wrongWords = JSON.parse(localStorage.getItem("wrongWords") || "[]");
+let mastered = JSON.parse(localStorage.getItem("mastered") || "{}");
+let dailyData = JSON.parse(localStorage.getItem("dailyData") || "{}");
+
+const todayKey = new Date().toLocaleDateString();
+if(!dailyData[todayKey]){
+  dailyData[todayKey] = 0;
+}
+
+// 保存所有数据
+function saveData(){
+  localStorage.setItem("wordDatabase", JSON.stringify(wordDatabase));
+  localStorage.setItem("favorites", JSON.stringify(favorites));
+  localStorage.setItem("wrongWords", JSON.stringify(wrongWords));
+  localStorage.setItem("mastered", JSON.stringify(mastered));
+  localStorage.setItem("dailyData", JSON.stringify(dailyData));
+}
+
+// 可折叠区域控制
+function toggleCollapsible(id) {
+  const element = document.getElementById(id);
+  element.classList.toggle('collapsed');
+  
+  // 保存折叠状态到本地存储
+  localStorage.setItem(`collapsible_${id}`, element.classList.contains('collapsed'));
+}
+
+// 初始化折叠状态
+function initCollapsibleState() {
+  const collapsibles = document.querySelectorAll('.collapsible');
+  collapsibles.forEach(element => {
+    const id = element.id;
+    const isCollapsed = localStorage.getItem(`collapsible_${id}`) === 'true';
+    if(isCollapsed) {
+      element.classList.add('collapsed');
+    }
+  });
+}
+
+// 5列CSV解析函数（支持带逗号的字段）
+function parseCSV(csvText) {
+  const lines = csvText.split('\n').filter(line => line.trim());
+  const result = {};
+  for(let i=1; i<lines.length; i++){
+    const parts = [];
+    let current = '';
+    let inQuotes = false;
+    for(const char of lines[i]){
+      if(char === '"'){
+        inQuotes = !inQuotes;
+      }else if(char === ',' && !inQuotes){
+        parts.push(current.trim());
+        current = '';
+      }else{
+        current += char;
+      }
+    }
+    parts.push(current.trim());
+    
+    const [no, word, transliteration, chinese, example] = parts;
+    if(word) {
+      result[word] = {
+        transliteration: transliteration || "暂无音标",
+        chinese: chinese || "暂无释义",
+        example: example || "No example"
+      };
+    }
+  }
+  return result;
+}
+
+// 从文件内容导入单词库
+function importFromFileContent(content, fileName) {
+  try {
+    const parsedData = parseCSV(content);
+    if(Object.keys(parsedData).length === 0) {
+      showAutoImportStatus("CSV文件为空或格式错误", "error");
+      return;
+    }
+    
+    wordDatabase = parsedData;
+    words = Object.keys(parsedData);
+    // 导入后自动切换到未学单词列表
+    switchToList('unmastered');
+    showAutoImportStatus(`✅ 成功导入 ${words.length} 个单词（来自 ${fileName}）`, "success");
+    return true;
+  } catch (error) {
+    showAutoImportStatus("❌ CSV解析失败，请检查格式", "error");
+    console.error(error);
+    return false;
+  }
+}
+
+// 手动选择文件导入
+function importCSV(event) {
+  const file = event.target.files[0];
+  if(!file) return;
+  readFile(file);
+}
+
+// 读取文件内容
+function readFile(file) {
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    importFromFileContent(e.target.result, file.name);
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+// 导出CSV
+function exportCSV() {
+  if(Object.keys(wordDatabase).length === 0) {
+    alert('暂无单词数据可导出！');
+    return;
+  }
+  let csvContent = "No,words,transliteration,chinese,example sentence\n";
+  let no = 1;
+  for(const [word, info] of Object.entries(wordDatabase)) {
+    const chinese = info.chinese.includes(',') ? `"${info.chinese}"` : info.chinese;
+    const example = info.example.includes(',') ? `"${info.example}"` : info.example;
+    csvContent += `${no},${word},${info.transliteration},${chinese},${example}\n`;
+    no++;
+  }
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.setAttribute('href', url);
+  link.setAttribute('download', `toeic_words_${new Date().getTime()}.csv`);
+  link.style.visibility = 'hidden';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+}
+
+// 重置学习进度
+function resetMastered() {
+  if(confirm("确定要重置所有学习进度吗？此操作不可撤销！")) {
+    mastered = {};
+    dailyData = {};
+    dailyData[todayKey] = 0;
+    saveData();
+    switchToList('unmastered');
+    alert("学习进度已重置");
+  }
+}
+
+// 显示自动导入状态
+function showAutoImportStatus(message, type) {
+  const statusEl = document.getElementById('autoImportStatus');
+  statusEl.innerHTML = message;
+  statusEl.className = `auto-import-status ${type}`;
+  statusEl.style.display = 'flex';
+  
+  // 3秒后自动隐藏成功和信息提示
+  if(type === 'success' || type === 'info') {
+    setTimeout(() => {
+      statusEl.style.display = 'none';
+    }, 3000);
+  }
+}
+
+// ==================== 自动导入核心功能 ====================
+let fileHandle = null;
+
+// 检查是否支持File System Access API
+function isFileSystemAccessSupported() {
+  return 'showOpenFilePicker' in window;
+}
+
+// 保存文件句柄到本地存储
+async function saveFileHandle(handle) {
+  try {
+    await localStorage.setItem('csvFileHandle', JSON.stringify(await handle));
+  } catch (e) {
+    console.log("浏览器不支持保存文件句柄，下次打开需重新授权");
+  }
+}
+
+// 从本地存储获取文件句柄
+async function getSavedFileHandle() {
+  try {
+    const handleJson = localStorage.getItem('csvFileHandle');
+    if(handleJson) {
+      return JSON.parse(handleJson);
+    }
+  } catch (e) {
+    return null;
+  }
+  return null;
+}
+
+// 忘记保存的文件句柄
+function forgetFileHandle() {
+  localStorage.removeItem('csvFileHandle');
+  fileHandle = null;
+  showAutoImportStatus("ℹ️ 已忘记自动导入文件，下次打开需重新选择", "info");
+}
+
+// 自动导入文件
+async function autoImportCSV() {
+  if(!isFileSystemAccessSupported()) {
+    showAutoImportStatus("⚠️ 您的浏览器不支持自动导入功能，请使用手动导入", "error");
+    return;
+  }
+
+  try {
+    // 先尝试使用保存的文件句柄
+    const savedHandle = await getSavedFileHandle();
+    if(savedHandle) {
+      try {
+        // 验证文件是否仍然存在且有权限
+        const file = await savedHandle.getFile();
+        const content = await file.text();
+        if(importFromFileContent(content, file.name)) {
+          fileHandle = savedHandle;
+          return;
+        }
+      } catch (e) {
+        console.log("保存的文件不可用，尝试选择新文件");
+      }
+    }
+
+    // 没有保存的句柄或句柄失效，尝试选择新文件
+    showAutoImportStatus("ℹ️ 请授权访问本地Toeic_words.csv文件（仅需授权一次）", "info");
+    
+    [fileHandle] = await window.showOpenFilePicker({
+      types: [
+        {
+          description: 'CSV Files',
+          accept: {
+            'text/csv': ['.csv']
+          }
+        }
+      ],
+      multiple: false,
+      suggestedName: 'Toeic_words.csv'
+    });
+
+    // 保存文件句柄以便下次自动使用
+    await saveFileHandle(fileHandle);
+    
+    // 读取文件内容
+    const file = await fileHandle.getFile();
+    const content = await file.text();
+    importFromFileContent(content, file.name);
+
+  } catch (error) {
+    if(error.name === 'AbortError') {
+      // 用户取消了文件选择，不显示任何提示
+      console.log("用户取消了文件选择，使用默认单词库");
+    } else {
+      showAutoImportStatus(`❌ 自动导入失败：${error.message}`, "error");
+      console.error(error);
+    }
+  }
+}
+
+// ==================== 拖放导入功能 ====================
+function setupDragAndDrop() {
+  const dropZone = document.getElementById('dropZone');
+  
+  ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+    dropZone.addEventListener(eventName, preventDefaults, false);
+  });
+
+  function preventDefaults(e) {
+    e.preventDefault();
+    e.stopPropagation();
+  }
+
+  ['dragenter', 'dragover'].forEach(eventName => {
+    dropZone.addEventListener(eventName, () => {
+      dropZone.classList.add('active');
+    }, false);
+  });
+
+  ['dragleave', 'drop'].forEach(eventName => {
+    dropZone.addEventListener(eventName, () => {
+      dropZone.classList.remove('active');
+    }, false);
+  });
+
+  dropZone.addEventListener('drop', (e) => {
+    const files = e.dataTransfer.files;
+    if(files.length > 0 && files[0].name.endsWith('.csv')) {
+      readFile(files[0]);
+    } else {
+      showAutoImportStatus("❌ 请拖放CSV文件", "error");
+    }
+  }, false);
+}
+
+// ==================== 模态框功能 ====================
+function showModal(id) {
+  document.getElementById(id).classList.add('active');
+}
+
+function closeModal(id) {
+  document.getElementById(id).classList.remove('active');
+}
+
+// 点击模态框外部关闭
+document.querySelectorAll('.modal-overlay').forEach(overlay => {
+  overlay.addEventListener('click', (e) => {
+    if(e.target === overlay) {
+      closeModal(overlay.id);
+    }
+  });
+});
+
+// ==================== 学习列表切换功能 ====================
+function switchToList(listType) {
+  // 停止自动播放
+  if(autoPlay) {
+    toggleAutoPlay();
+  }
+  
+  currentList = listType;
+  index = 0;
+  reveal = false;
+  
+  // 根据列表类型生成对应的单词队列
+  switch(listType) {
+    case 'unmastered':
+      // 未学单词：过滤掉已学的
+      deck = words.filter(word => !mastered[word]);
+      document.getElementById('currentListTitle').textContent = '📚 未学单词';
+      document.getElementById('returnBtn').style.display = 'none';
+      break;
+    case 'favorites':
+      // 收藏单词：过滤掉已学的
+      deck = favorites.filter(word => !mastered[word]);
+      document.getElementById('currentListTitle').textContent = '⭐ 收藏单词';
+      document.getElementById('returnBtn').style.display = 'inline-flex';
+      break;
+    case 'wrongWords':
+      // 错题单词：过滤掉已学的
+      deck = wrongWords.filter(word => !mastered[word]);
+      document.getElementById('currentListTitle').textContent = '❌ 错题单词';
+      document.getElementById('returnBtn').style.display = 'inline-flex';
+      break;
+  }
+  
+  // 如果队列为空，显示提示
+  if(deck.length === 0) {
+    deck = ["该列表暂无未学单词"];
+  }
+  
+  // 更新统计卡片激活状态
+  document.querySelectorAll('.stat-box').forEach(box => {
+    box.classList.remove('active');
+  });
+  document.getElementById(`${listType}Stat`).classList.add('active');
+  
+  updateUI();
+}
+
+// ==================== 每日学习折线图功能 ====================
+function showDailyChartModal() {
+  // 准备图表数据
+  const dates = Object.keys(dailyData).sort((a, b) => new Date(a) - new Date(b));
+  const counts = dates.map(date => dailyData[date]);
+  
+  // 计算统计数据
+  const totalDays = dates.length;
+  const totalLearned = counts.reduce((a, b) => a + b, 0);
+  const avgDaily = totalDays > 0 ? Math.round(totalLearned / totalDays * 10) / 10 : 0;
+  
+  // 更新统计数字
+  document.getElementById('totalDays').textContent = totalDays;
+  document.getElementById('totalLearned').textContent = totalLearned;
+  document.getElementById('avgDaily').textContent = avgDaily;
+  
+  // 销毁旧图表
+  if(dailyChart) {
+    dailyChart.destroy();
+  }
+  
+  // 创建新图表
+  const ctx = document.getElementById('dailyChart').getContext('2d');
+  dailyChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: dates,
+      datasets: [{
+        label: '每日学习单词数',
+        data: counts,
+        backgroundColor: 'rgba(37, 99, 235, 0.1)',
+        borderColor: '#2563eb',
+        borderWidth: 2,
+        tension: 0.4,
+        fill: true,
+        pointBackgroundColor: '#ffffff',
+        pointBorderColor: '#2563eb',
+        pointBorderWidth: 2,
+        pointRadius: 4
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: false
+        },
+        tooltip: {
+          callbacks: {
+            title: function(context) {
+              return context[0].label;
+            },
+            label: function(context) {
+              return `学习了 ${context.raw} 个单词`;
+            }
+          }
+        }
+      },
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            stepSize: 10
+          },
+          grid: {
+            color: 'rgba(0, 0, 0, 0.05)'
+          }
+        },
+        x: {
+          grid: {
+            display: false
+          }
+        }
+      }
+    }
+  });
+  
+  showModal("dailyChartModal");
+}
+
+// ==================== 核心学习功能 ====================
+function currentWord(){
+  return deck[index] || "";
+}
+
+function updateUI(){
+  const word = currentWord();
+  document.getElementById("word").innerText = word;
+  document.getElementById("indexText").innerText = (index + 1) + " / " + deck.length;
+
+  const info = wordDatabase[word] || {
+    transliteration: "暂无音标",
+    chinese: "暂无释义",
+    example: "No example"
+  };
+
+  document.getElementById("transliteration").innerText = info.transliteration;
+  document.getElementById("chinese").innerText = info.chinese;
+  document.getElementById("example").innerText = info.example;
+  document.getElementById("details").style.display = reveal ? "block" : "none";
+
+  // 更新统计数字
+  const unmasteredCount = words.filter(word => !mastered[word]).length;
+  const favoriteCount = favorites.filter(word => !mastered[word]).length;
+  const wrongCount = wrongWords.filter(word => !mastered[word]).length;
+  
+  document.getElementById("unmasteredCount").innerText = unmasteredCount;
+  document.getElementById("favoriteCount").innerText = favoriteCount;
+  document.getElementById("wrongCount").innerText = wrongCount;
+  document.getElementById("dailyCount").innerText = dailyData[todayKey];
+
+  // 更新进度条
+  const progress = Math.round(Object.keys(mastered).length / words.length * 100);
+  document.getElementById("progressText").innerText = progress + "%";
+  document.getElementById("progress").style.width = progress + "%";
+
+  saveData();
+}
+
+function toggleReveal(){
+  reveal = !reveal;
+  updateUI();
+}
+
+function nextWord(){
+  reveal = false;
+  index = (index + 1) % deck.length;
+  updateUI();
+  // 添加100ms延迟确保DOM更新完成后再发音
+  setTimeout(() => {
+    speakWord();
+  }, 100);
+}
+
+function prevWord(){
+  reveal = false;
+  index = (index - 1 + deck.length) % deck.length;
+  updateUI();
+  // 点击上一个也自动发音
+  setTimeout(() => {
+    speakWord();
+  }, 100);
+}
+
+function markKnown(){
+  const word = currentWord();
+  if(word === "该列表暂无未学单词") return;
+  
+  // 标记为已学
+  mastered[word] = true;
+  dailyData[todayKey]++;
+  
+  // 从当前队列中移除
+  deck.splice(index, 1);
+  
+  // 如果队列为空，显示提示
+  if(deck.length === 0) {
+    deck = ["该列表暂无未学单词"];
+    index = 0;
+  } else {
+    // 调整索引
+    index = index % deck.length;
+  }
+  
+  updateUI();
+  // 标记认识后自动发音下一个单词
+  setTimeout(() => {
+    speakWord();
+  }, 100);
+}
+
+function markUnknown(){
+  const word = currentWord();
+  if(word === "该列表暂无未学单词") return;
+  
+  // 添加到错题本（如果不在的话）
+  if(!wrongWords.includes(word)){
+    wrongWords.unshift(word);
+  }
+  dailyData[todayKey]++;
+  nextWord();
+}
+
+function toggleFavorite(){
+  const word = currentWord();
+  if(word === "该列表暂无未学单词") return;
+  
+  if(favorites.includes(word)){
+    favorites = favorites.filter(item => item !== word);
+  }else{
+    favorites.unshift(word);
+  }
+  updateUI();
+}
+
+function shuffleWords(){
+  if(deck.length <= 1 || deck[0] === "该列表暂无未学单词") return;
+  
+  for(let i = deck.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [deck[i], deck[j]] = [deck[j], deck[i]];
+  }
+  index = 0;
+  updateUI();
+  // 打乱后自动发音第一个单词
+  setTimeout(() => {
+    speakWord();
+  }, 100);
+}
+
+function toggleAutoPlay(){
+  if(deck[0] === "该列表暂无未学单词") {
+    alert("当前列表暂无单词可播放");
+    return;
+  }
+  
+  autoPlay = !autoPlay;
+  const btn = document.getElementById("autoBtn");
+  if(autoPlay){
+    btn.innerText = "⏸️ 暂停";
+    // 开始自动播放时先发音当前单词
+    setTimeout(() => {
+      speakWord();
+    }, 100);
+    timer = setInterval(nextWord, autoPlayInterval);
+  }else{
+    btn.innerText = "▶️ 自动播放";
+    clearInterval(timer);
+  }
+}
+
+// 增强版发音函数，添加错误处理
+function speakWord(event){
+  if(event) {
+    event.stopPropagation();
+  }
+  
+  const word = currentWord();
+  if(word === "该列表暂无未学单词" || word === "无匹配结果") return;
+  
+  // 检查浏览器是否支持语音合成
+  if(!('speechSynthesis' in window)) {
+    console.error("您的浏览器不支持语音合成功能");
+    return;
+  }
+  
+  try {
+    const utterance = new SpeechSynthesisUtterance(word);
+    utterance.lang = "en-US";
+    utterance.rate = 0.9;
+    utterance.volume = 1.0;
+    utterance.pitch = 1.0;
+    
+    // 取消之前的发音
+    speechSynthesis.cancel();
+    // 开始新的发音
+    speechSynthesis.speak(utterance);
+  } catch (error) {
+    console.error("发音失败:", error);
+  }
+}
+
+// 自动播放间隔设置
+function updateInterval() {
+  const input = document.getElementById('intervalInput');
+  const value = parseFloat(input.value);
+  
+  if(isNaN(value) || value < 1 || value > 30) {
+    alert("请输入1-30之间的数字");
+    input.value = autoPlayInterval / 1000;
+    return;
+  }
+  
+  autoPlayInterval = value * 1000;
+  
+  // 如果正在自动播放，重启定时器
+  if(autoPlay) {
+    clearInterval(timer);
+    timer = setInterval(nextWord, autoPlayInterval);
+  }
+  
+  alert(`自动播放间隔已设置为 ${value} 秒`);
+}
+
+// 搜索功能
+document.getElementById("searchInput").addEventListener("input", function(){
+  const value = this.value.toLowerCase();
+  let baseList;
+  
+  // 根据当前列表类型获取基础列表
+  switch(currentList) {
+    case 'unmastered':
+      baseList = words.filter(word => !mastered[word]);
+      break;
+    case 'favorites':
+      baseList = favorites.filter(word => !mastered[word]);
+      break;
+    case 'wrongWords':
+      baseList = wrongWords.filter(word => !mastered[word]);
+      break;
+  }
+  
+  // 搜索过滤
+  deck = baseList.filter(word => word.toLowerCase().includes(value));
+  
+  if(deck.length === 0) {
+    deck = ["无匹配结果"];
+  }
+  index = 0;
+  reveal = false;
+  updateUI();
+  // 搜索后自动发音第一个结果
+  setTimeout(() => {
+    speakWord();
+  }, 100);
+});
+
+// 页面加载时自动执行
+window.addEventListener('load', async () => {
+  initCollapsibleState(); // 初始化折叠状态
+  setupDragAndDrop();
+  // 初始化时切换到未学单词列表
+  switchToList('unmastered');
+  // 延迟一点执行自动导入，让页面先加载完成
+  setTimeout(autoImportCSV, 500);
+});
+</script>
+
+</body>
+</html>
