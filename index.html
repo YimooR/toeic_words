@@ -1009,7 +1009,7 @@ function setupAutoCollapse() {
 }
 
 // ==================== Firebase 云端同步配置 ====================
-// 请替换为您自己的Firebase配置信息
+// 请替换为您自己的Firebase真实配置信息
 const firebaseConfig = {
   apiKey: "AIzaSyA101QAIovjn3AZKwXVQbm1CWEljTsHQLc",
   authDomain: "topic-words.firebaseapp.com",
@@ -1020,20 +1020,26 @@ const firebaseConfig = {
   appId: "1:375241220207:web:044675f042d731ac6aad9a"
 };
 
-// 初始化Firebase（仅在http/https协议下）
+// 全局声明Firebase实例（修复作用域问题）
+let auth = null;
+let database = null;
 let cloudSyncEnabled = false;
 let userId = null;
 let syncTimeout = null;
 
+// 初始化Firebase（仅在http/https协议下）
 if (window.location.protocol !== 'file:') {
   try {
     firebase.initializeApp(firebaseConfig);
-    const auth = firebase.auth();
-    const database = firebase.database();
+    auth = firebase.auth();
+    database = firebase.database();
     cloudSyncEnabled = true;
+    console.log("Firebase初始化成功");
   } catch (error) {
     console.error("Firebase初始化失败:", error);
     cloudSyncEnabled = false;
+    auth = null;
+    database = null;
   }
 }
 
@@ -1066,7 +1072,7 @@ function updateSyncStatus(status, text) {
 
 // 匿名登录Firebase
 function signInAnonymously() {
-  if (!cloudSyncEnabled || window.location.protocol === 'file:') {
+  if (!cloudSyncEnabled || !auth || window.location.protocol === 'file:') {
     updateSyncStatus('local');
     return;
   }
@@ -1074,6 +1080,7 @@ function signInAnonymously() {
   auth.signInAnonymously()
     .then((userCredential) => {
       userId = userCredential.user.uid;
+      console.log("匿名登录成功，用户ID:", userId);
       updateSyncStatus('synced', '已连接云端');
       
       // 登录成功后从云端拉取数据
@@ -1088,7 +1095,7 @@ function signInAnonymously() {
 
 // 将学习数据推送到云端（防抖3秒）
 function syncToCloud() {
-  if(!cloudSyncEnabled || !userId || window.location.protocol === 'file:') return;
+  if(!cloudSyncEnabled || !userId || !database || window.location.protocol === 'file:') return;
   
   // 清除之前的同步定时器
   clearTimeout(syncTimeout);
@@ -1119,7 +1126,7 @@ function syncToCloud() {
 
 // 从云端拉取学习数据
 function pullFromCloud() {
-  if(!cloudSyncEnabled || !userId || window.location.protocol === 'file:') return;
+  if(!cloudSyncEnabled || !userId || !database || window.location.protocol === 'file:') return;
   
   updateSyncStatus('syncing', '正在从云端同步数据...');
   
