@@ -6,6 +6,10 @@
 <title>TOEIC 单词背诵系统</title>
 <!-- 引入Chart.js用于绘制图表 -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+<!-- 引入Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 <style>
 /* 全局样式重置与基础变量 */
 :root {
@@ -31,6 +35,35 @@
   --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* 夜晚模式变量（护眼专业版） */
+.dark-theme {
+  /* 主色调：柔和靛蓝色，降低蓝光，护眼效果更好 */
+  --primary: #6366f1;
+  --primary-hover: #4f46e5;
+  
+  /* 辅助色：降低饱和度，避免刺眼 */
+  --secondary: #71717a;
+  --secondary-hover: #52525b;
+  --success: #10b981;
+  --warning: #f59e0b;
+  --danger: #ef4444;
+  
+  /* 背景系统：分层灰度设计，避免纯黑 */
+  --background: #18181b; /* 页面背景：深中性灰 */
+  --card-bg: #27272a;     /* 卡片背景：比页面稍亮 */
+  --border: #3f3f46;      /* 边框：柔和灰色 */
+  
+  /* 文字系统：避免纯白，减少反光 */
+  --text-primary: #fafafa;   /* 主文字：柔和白色 */
+  --text-secondary: #a1a1aa; /* 次文字：中性灰色 */
+  
+  /* 阴影系统：深色背景下更柔和的阴影 */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.5);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.6), 0 2px 4px -1px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.7), 0 4px 6px -2px rgba(0, 0, 0, 0.6);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.8), 0 10px 10px -5px rgba(0, 0, 0, 0.7);
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -44,11 +77,36 @@ body {
   line-height: 1.6;
   padding: 16px;
   min-height: 100vh;
+  transition: var(--transition);
 }
 
 .container {
   max-width: 800px;
   margin: 0 auto;
+}
+
+/* 头部标题区域 */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+/* 主题切换按钮 */
+.theme-toggle {
+  background: var(--card-bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 8px 12px;
+  cursor: pointer;
+  font-size: 1.2rem;
+  transition: var(--transition);
+}
+
+.theme-toggle:hover {
+  background: var(--background);
+  border-color: var(--primary);
 }
 
 /* 卡片通用样式 */
@@ -69,8 +127,8 @@ body {
 h1 {
   font-size: clamp(1.8rem, 4vw, 2.5rem);
   font-weight: 700;
-  margin-bottom: 8px;
-  background: linear-gradient(135deg, var(--primary), #7c3aed);
+  margin-bottom: 0;
+  background: linear-gradient(135deg, var(--primary), #8b5cf6);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -88,6 +146,32 @@ h3 {
   font-weight: 600;
   margin-bottom: 12px;
   color: var(--text-primary);
+}
+
+/* 同步状态样式 */
+.sync-status {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  margin-top: 8px;
+}
+
+.sync-status.syncing {
+  color: var(--warning);
+}
+
+.sync-status.synced {
+  color: var(--success);
+}
+
+.sync-status.error {
+  color: var(--danger);
+}
+
+.sync-status.local {
+  color: var(--secondary);
 }
 
 /* 可折叠区域样式 */
@@ -168,10 +252,16 @@ h3 {
   border: 1px solid #bfdbfe;
 }
 
-.auto-import-status.error {
-  background: #fee2e2;
-  color: #991b1b;
-  border: 1px solid #fecaca;
+.dark-theme .auto-import-status.success {
+  background: #064e3b;
+  color: #6ee7b7;
+  border: 1px solid #047857;
+}
+
+.dark-theme .auto-import-status.info {
+  background: #1e3a8a;
+  color: #93c5fd;
+  border: 1px solid #1d4ed8;
 }
 
 .drop-zone {
@@ -186,7 +276,7 @@ h3 {
 
 .drop-zone:hover, .drop-zone.active {
   border-color: var(--primary);
-  background: #eff6ff;
+  background: rgba(99, 102, 241, 0.1);
 }
 
 .drop-zone input[type="file"] {
@@ -267,12 +357,18 @@ input {
   font-size: 1rem;
   transition: var(--transition);
   background: var(--card-bg);
+  color: var(--text-primary);
 }
 
 input:focus {
   outline: none;
   border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
+}
+
+/* 搜索框样式（增加底部间距） */
+#searchInput {
+  margin-bottom: 20px;
 }
 
 /* 进度条样式 */
@@ -282,15 +378,22 @@ input:focus {
   background: var(--border);
   border-radius: 999px;
   overflow: hidden;
-  margin: 20px 0;
+  margin: 20px 0 8px 0;
 }
 
 .progress {
   height: 100%;
-  background: linear-gradient(90deg, var(--primary), #7c3aed);
+  background: linear-gradient(90deg, var(--primary), #8b5cf6);
   width: 0%;
   transition: width 0.5s ease-in-out;
   border-radius: 999px;
+}
+
+#progressText {
+  text-align: center;
+  color: var(--text-secondary);
+  margin-bottom: 20px;
+  font-size: 0.9rem;
 }
 
 /* 统计卡片样式 */
@@ -316,7 +419,7 @@ input:focus {
 }
 
 .stat-box.active {
-  background: #eff6ff;
+  background: rgba(99, 102, 241, 0.1);
   border: 2px solid var(--primary);
 }
 
@@ -363,7 +466,7 @@ input:focus {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%);
+  background: linear-gradient(135deg, var(--card-bg) 0%, var(--background) 100%);
 }
 
 .word-card:hover {
@@ -430,6 +533,30 @@ input:focus {
   gap: 8px;
   margin-top: 24px;
   justify-content: center;
+  align-items: center;
+}
+
+/* 自动播放控制区域（与按钮同一行） */
+.playback-controls {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 24px; /* 增加底部间距，避免与单词卡片贴在一起 */
+  justify-content: center;
+  align-items: center;
+}
+
+/* 自动播放间隔设置 */
+.interval-setting {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  white-space: nowrap;
+}
+
+.interval-setting input {
+  width: 80px;
+  text-align: center;
 }
 
 /* 列表样式 */
@@ -474,7 +601,7 @@ input:focus {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.7);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -543,17 +670,22 @@ input:focus {
   width: 100%;
 }
 
-/* 自动播放间隔设置 */
-.interval-setting {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-top: 12px;
+/* 页脚版权信息 */
+.footer {
+  text-align: center;
+  padding: 20px;
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+  margin-top: 40px;
 }
 
-.interval-setting input {
-  width: 80px;
-  text-align: center;
+.footer a {
+  color: var(--primary);
+  text-decoration: none;
+}
+
+.footer a:hover {
+  text-decoration: underline;
 }
 
 /* 响应式媒体查询 */
@@ -586,6 +718,19 @@ input:focus {
   
   .controls button {
     width: 100%;
+  }
+  
+  .playback-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  
+  .playback-controls button {
+    width: 100%;
+  }
+  
+  .interval-setting {
+    justify-content: center;
   }
   
   .button-group {
@@ -629,34 +774,52 @@ input:focus {
 
   <!-- 头部卡片 -->
   <div class="card">
-    <h1>TOEIC 单词背诵系统</h1>
-    <p style="color: var(--text-secondary); margin-bottom: 16px;">自动导入本地Toeic_words.csv | 收藏夹、错题本、学习记录永久保存</p>
+    <div class="header">
+      <h1>TOEIC 单词背诵系统</h1>
+      <button class="theme-toggle" onclick="toggleTheme()" id="themeToggle">🌙</button>
+    </div>
     
-    <!-- 自动导入状态显示（初始为空） -->
+    <!-- 云端同步状态显示 -->
+    <div id="syncStatus" class="sync-status">
+      <span>☁️</span> <span id="syncStatusText">正在连接云端...</span>
+    </div>
+    
+    <!-- 自动导入状态显示（仅用于成功和信息提示） -->
     <div id="autoImportStatus" class="auto-import-status" style="display: none;"></div>
 
-    <!-- 可折叠的单词库管理区域 -->
+    <!-- 可折叠的单词库与学习记录管理区域 -->
     <div class="collapsible" id="wordLibraryManager">
       <div class="collapsible-header" onclick="toggleCollapsible('wordLibraryManager')">
-        <h3><span>📚</span> 单词库管理</h3>
+        <h3><span>📚</span> 单词库与学习记录管理</h3>
         <span class="collapse-icon">▼</span>
       </div>
       <div class="collapsible-content">
+        <p style="color: var(--text-secondary); margin-bottom: 16px;">
+          ✨ 自动导入本地Toeic_words.csv | 云端自动同步，跨设备永久保存
+        </p>
+        
         <div class="import-area">
           <div id="dropZone" class="drop-zone">
-            <p>拖放CSV文件到此处导入</p>
+            <p>拖放CSV文件到此处导入单词库</p>
             <p style="margin: 8px 0; color: var(--text-secondary);">或</p>
-            <button class="primary" onclick="document.getElementById('csvFileInput').click()">选择文件</button>
+            <button class="primary" onclick="document.getElementById('csvFileInput').click()">选择单词库文件</button>
             <input type="file" id="csvFileInput" accept=".csv" onchange="importCSV(event)">
           </div>
           
           <div class="button-group">
             <button class="outline" onclick="exportCSV()">导出当前单词库</button>
+            <button class="outline" onclick="exportLearningData()">💾 导出学习记录</button>
+            <button class="outline" onclick="document.getElementById('learningDataInput').click()">📥 导入学习记录</button>
+            <input type="file" id="learningDataInput" accept=".json" onchange="importLearningData(event)" style="display: none;">
+            <button class="outline" onclick="syncToCloud()">🔄 立即同步</button>
             <button class="outline" onclick="forgetFileHandle()">忘记自动导入文件</button>
             <button class="outline" onclick="resetMastered()">重置学习进度</button>
           </div>
           
           <p style="margin: 12px 0 0 0; color: var(--text-secondary); font-size: 0.9rem;">
+            💡 导入新单词库不会覆盖原有学习记录（只要单词拼写一致）
+          </p>
+          <p style="margin: 4px 0 0 0; color: var(--text-secondary); font-size: 0.9rem;">
             CSV格式：No,words,transliteration,chinese,example sentence（UTF-8编码）
           </p>
         </div>
@@ -667,6 +830,7 @@ input:focus {
     <div class="progress-bar">
       <div class="progress" id="progress"></div>
     </div>
+    <p id="progressText">0%</p>
 
     <!-- 统计卡片（可点击切换学习列表） -->
     <div class="stats">
@@ -700,17 +864,17 @@ input:focus {
     
     <input id="searchInput" placeholder="🔍 搜索单词...">
 
-    <div class="controls" style="margin-bottom: 20px;">
+    <!-- 合并后的播放控制区域（同一行显示） -->
+    <div class="playback-controls">
       <button class="outline" onclick="shuffleWords()">🔀 打乱顺序</button>
       <button class="outline" onclick="toggleAutoPlay()" id="autoBtn">▶️ 自动播放</button>
-    </div>
-    
-    <!-- 自动播放间隔设置 -->
-    <div class="interval-setting">
-      <label for="intervalInput">自动播放间隔：</label>
-      <input type="number" id="intervalInput" min="1" max="30" value="4" step="0.5">
-      <span>秒</span>
-      <button class="outline" onclick="updateInterval()">应用</button>
+      
+      <div class="interval-setting">
+        <label for="intervalInput">自动播放间隔：</label>
+        <input type="number" id="intervalInput" min="1" max="30" value="4" step="0.5">
+        <span>秒</span>
+        <button class="outline" onclick="updateInterval()">应用</button>
+      </div>
     </div>
 
     <div class="word-card" onclick="toggleReveal()">
@@ -746,6 +910,11 @@ input:focus {
 
 </div>
 
+<!-- 页脚版权信息 -->
+<footer class="footer">
+  <p>© 2026 版权所有 yanghao | 邮箱：<a href="mailto:yimoorua@163.com">yimoorua@163.com</a></p>
+</footer>
+
 <!-- 每日学习折线图模态框 -->
 <div class="modal-overlay" id="dailyChartModal">
   <div class="modal">
@@ -765,6 +934,238 @@ input:focus {
 </div>
 
 <script>
+// ==================== 主题切换功能 ====================
+function toggleTheme() {
+  const body = document.body;
+  const themeToggle = document.getElementById('themeToggle');
+  
+  body.classList.toggle('dark-theme');
+  
+  if(body.classList.contains('dark-theme')) {
+    themeToggle.textContent = '☀️';
+    localStorage.setItem('theme', 'dark');
+    // 更新图表主题
+    updateChartTheme();
+  } else {
+    themeToggle.textContent = '🌙';
+    localStorage.setItem('theme', 'light');
+    // 更新图表主题
+    updateChartTheme();
+  }
+}
+
+// 初始化主题
+function initTheme() {
+  const savedTheme = localStorage.getItem('theme');
+  const themeToggle = document.getElementById('themeToggle');
+  
+  if(savedTheme === 'dark') {
+    document.body.classList.add('dark-theme');
+    themeToggle.textContent = '☀️';
+  } else {
+    document.body.classList.remove('dark-theme');
+    themeToggle.textContent = '🌙';
+  }
+}
+
+// 更新图表主题
+function updateChartTheme() {
+  if(dailyChart) {
+    const isDark = document.body.classList.contains('dark-theme');
+    
+    // 更新网格线颜色
+    dailyChart.options.scales.y.grid.color = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)';
+    
+    // 更新文字颜色
+    dailyChart.options.scales.y.ticks.color = isDark ? '#a1a1aa' : '#64748b';
+    dailyChart.options.scales.x.ticks.color = isDark ? '#a1a1aa' : '#64748b';
+    
+    // 更新提示框背景
+    dailyChart.options.plugins.tooltip.backgroundColor = isDark ? '#27272a' : 'rgba(255, 255, 255, 0.9)';
+    dailyChart.options.plugins.tooltip.titleColor = isDark ? '#fafafa' : '#0f172a';
+    dailyChart.options.plugins.tooltip.bodyColor = isDark ? '#a1a1aa' : '#64748b';
+    
+    dailyChart.update();
+  }
+}
+
+// ==================== 自动折叠功能 ====================
+function setupAutoCollapse() {
+  // 获取所有按钮
+  const allButtons = document.querySelectorAll('button');
+  const wordLibraryManager = document.getElementById('wordLibraryManager');
+  
+  allButtons.forEach(button => {
+    // 排除单词库管理模块内部的按钮
+    if(!wordLibraryManager.contains(button)) {
+      button.addEventListener('click', () => {
+        // 如果模块是展开的，就折叠它
+        if(!wordLibraryManager.classList.contains('collapsed')) {
+          toggleCollapsible('wordLibraryManager');
+        }
+      });
+    }
+  });
+}
+
+// ==================== Firebase 云端同步配置 ====================
+// 请替换为您自己的Firebase配置信息
+const firebaseConfig = {
+  apiKey: "YOUR_API_KEY",
+  authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+  databaseURL: "https://YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
+  projectId: "YOUR_PROJECT_ID",
+  storageBucket: "YOUR_PROJECT_ID.appspot.com",
+  messagingSenderId: "YOUR_SENDER_ID",
+  appId: "YOUR_APP_ID"
+};
+
+// 初始化Firebase（仅在http/https协议下）
+let cloudSyncEnabled = false;
+let userId = null;
+let syncTimeout = null;
+
+if (window.location.protocol !== 'file:') {
+  try {
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const database = firebase.database();
+    cloudSyncEnabled = true;
+  } catch (error) {
+    console.error("Firebase初始化失败:", error);
+    cloudSyncEnabled = false;
+  }
+}
+
+// 更新同步状态显示
+function updateSyncStatus(status, text) {
+  const statusEl = document.getElementById('syncStatus');
+  const textEl = document.getElementById('syncStatusText');
+  
+  if (!statusEl || !textEl) return;
+  
+  statusEl.className = `sync-status ${status}`;
+  
+  switch(status) {
+    case 'syncing':
+      textEl.textContent = text || '正在同步...';
+      break;
+    case 'synced':
+      textEl.textContent = text || '已同步到云端';
+      break;
+    case 'error':
+      textEl.textContent = text || '同步失败';
+      break;
+    case 'local':
+      textEl.textContent = text || '本地模式（请用http://打开以启用云端同步）';
+      break;
+    default:
+      textEl.textContent = text || '正在连接云端...';
+  }
+}
+
+// 匿名登录Firebase
+function signInAnonymously() {
+  if (!cloudSyncEnabled || window.location.protocol === 'file:') {
+    updateSyncStatus('local');
+    return;
+  }
+
+  auth.signInAnonymously()
+    .then((userCredential) => {
+      userId = userCredential.user.uid;
+      updateSyncStatus('synced', '已连接云端');
+      
+      // 登录成功后从云端拉取数据
+      pullFromCloud();
+    })
+    .catch((error) => {
+      console.error("Firebase匿名登录失败:", error);
+      cloudSyncEnabled = false;
+      updateSyncStatus('error', '云端连接失败，使用本地模式');
+    });
+}
+
+// 将学习数据推送到云端（防抖3秒）
+function syncToCloud() {
+  if(!cloudSyncEnabled || !userId || window.location.protocol === 'file:') return;
+  
+  // 清除之前的同步定时器
+  clearTimeout(syncTimeout);
+  
+  // 设置3秒防抖，避免频繁同步
+  syncTimeout = setTimeout(() => {
+    updateSyncStatus('syncing');
+    
+    const learningData = {
+      version: "1.0",
+      lastSync: firebase.database.ServerValue.TIMESTAMP,
+      mastered: mastered,
+      favorites: favorites,
+      wrongWords: wrongWords,
+      dailyData: dailyData
+    };
+    
+    database.ref(`users/${userId}/learningData`).set(learningData)
+      .then(() => {
+        updateSyncStatus('synced');
+      })
+      .catch((error) => {
+        console.error("云端同步失败:", error);
+        updateSyncStatus('error', '同步失败，将在下次操作时重试');
+      });
+  }, 3000);
+}
+
+// 从云端拉取学习数据
+function pullFromCloud() {
+  if(!cloudSyncEnabled || !userId || window.location.protocol === 'file:') return;
+  
+  updateSyncStatus('syncing', '正在从云端同步数据...');
+  
+  database.ref(`users/${userId}/learningData`).once('value')
+    .then((snapshot) => {
+      if(snapshot.exists()) {
+        const cloudData = snapshot.val();
+        
+        // 比较本地和云端数据的最后同步时间，以最新的为准
+        const localLastSync = parseInt(localStorage.getItem("lastSync") || "0");
+        const cloudLastSync = cloudData.lastSync || 0;
+        
+        if(cloudLastSync > localLastSync) {
+          // 云端数据更新，合并到本地
+          mastered = cloudData.mastered || {};
+          favorites = cloudData.favorites || [];
+          wrongWords = cloudData.wrongWords || [];
+          dailyData = cloudData.dailyData || {};
+          
+          // 确保今日数据存在
+          if(!dailyData[todayKey]){
+            dailyData[todayKey] = 0;
+          }
+          
+          // 保存到本地存储
+          saveData(false); // 不触发云端同步
+          switchToList(currentList);
+          
+          updateSyncStatus('synced', '已从云端同步最新数据');
+        } else {
+          // 本地数据更新，推送到云端
+          syncToCloud();
+          updateSyncStatus('synced');
+        }
+      } else {
+        // 云端没有数据，将本地数据推送到云端
+        syncToCloud();
+        updateSyncStatus('synced');
+      }
+    })
+    .catch((error) => {
+      console.error("从云端拉取数据失败:", error);
+      updateSyncStatus('error', '拉取云端数据失败，使用本地数据');
+    });
+}
+
 // 核心数据结构
 let wordDatabase = JSON.parse(localStorage.getItem("wordDatabase") || '{}');
 let words = Object.keys(wordDatabase).length > 0 ? Object.keys(wordDatabase) : [
@@ -791,8 +1192,9 @@ let autoPlay = false;
 let timer = null;
 let dailyChart = null; // 每日学习折线图实例
 let autoPlayInterval = 4000; // 默认自动播放间隔4秒
+let isImporting = false; // 导入锁，防止同时执行多个导入操作
 
-// 用户数据
+// 用户数据（学习记录）
 let favorites = JSON.parse(localStorage.getItem("favorites") || "[]");
 let wrongWords = JSON.parse(localStorage.getItem("wrongWords") || "[]");
 let mastered = JSON.parse(localStorage.getItem("mastered") || "{}");
@@ -803,18 +1205,104 @@ if(!dailyData[todayKey]){
   dailyData[todayKey] = 0;
 }
 
-// 保存所有数据
-function saveData(){
+// 保存所有数据到本地存储（可选是否同步到云端）
+function saveData(syncToCloudFlag = true){
   localStorage.setItem("wordDatabase", JSON.stringify(wordDatabase));
   localStorage.setItem("favorites", JSON.stringify(favorites));
   localStorage.setItem("wrongWords", JSON.stringify(wrongWords));
   localStorage.setItem("mastered", JSON.stringify(mastered));
   localStorage.setItem("dailyData", JSON.stringify(dailyData));
+  localStorage.setItem("lastSync", Date.now().toString());
+  
+  // 如果启用了云端同步，自动同步到云端
+  if(syncToCloudFlag && cloudSyncEnabled && window.location.protocol !== 'file:') {
+    syncToCloud();
+  }
+}
+
+// ==================== 学习记录导出/导入功能 ====================
+// 导出学习记录为JSON文件
+function exportLearningData() {
+  const learningData = {
+    version: "1.0",
+    exportDate: new Date().toISOString(),
+    mastered: mastered,
+    favorites: favorites,
+    wrongWords: wrongWords,
+    dailyData: dailyData
+  };
+  
+  const jsonContent = JSON.stringify(learningData, null, 2);
+  const blob = new Blob([jsonContent], { type: 'application/json;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.setAttribute('href', url);
+  link.setAttribute('download', `toeic_learning_data_${new Date().getTime()}.json`);
+  link.style.visibility = 'hidden';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  
+  showAutoImportStatus("✅ 学习记录已成功导出，请妥善保存文件", "success");
+}
+
+// 导入学习记录
+function importLearningData(event) {
+  const file = event.target.files[0];
+  if(!file) return;
+  
+  // 清空文件输入，允许重复选择同一个文件
+  event.target.value = '';
+  
+  if(!confirm("⚠️ 确定要导入学习记录吗？\n\n这将覆盖当前所有学习进度、收藏和错题本！\n建议先导出当前记录备份。")) {
+    return;
+  }
+  
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    try {
+      const learningData = JSON.parse(e.target.result);
+      
+      // 验证数据格式
+      if(!learningData.version || !learningData.mastered || !learningData.favorites || !learningData.wrongWords || !learningData.dailyData) {
+        alert("❌ 学习记录文件格式错误\n请确保是本系统导出的JSON文件");
+        return;
+      }
+      
+      // 覆盖当前学习数据
+      mastered = learningData.mastered;
+      favorites = learningData.favorites;
+      wrongWords = learningData.wrongWords;
+      dailyData = learningData.dailyData;
+      
+      // 确保今日数据存在
+      if(!dailyData[todayKey]){
+        dailyData[todayKey] = 0;
+      }
+      
+      // 保存数据并刷新UI
+      saveData();
+      switchToList(currentList);
+      
+      showAutoImportStatus("✅ 学习记录已成功导入并同步到云端", "success");
+    } catch (error) {
+      alert("❌ 学习记录解析失败\n请检查文件是否损坏或格式正确");
+      console.error("学习记录导入错误:", error);
+    }
+  };
+  
+  reader.onerror = function() {
+    alert("❌ 文件读取失败");
+  };
+  
+  reader.readAsText(file, 'UTF-8');
 }
 
 // 可折叠区域控制
 function toggleCollapsible(id) {
   const element = document.getElementById(id);
+  if (!element) return;
+  
   element.classList.toggle('collapsed');
   
   // 保存折叠状态到本地存储
@@ -837,10 +1325,18 @@ function initCollapsibleState() {
 function parseCSV(csvText) {
   const lines = csvText.split('\n').filter(line => line.trim());
   const result = {};
+  
+  // 跳过空文件
+  if(lines.length === 0) {
+    return result;
+  }
+  
+  // 从第二行开始解析（跳过表头）
   for(let i=1; i<lines.length; i++){
     const parts = [];
     let current = '';
     let inQuotes = false;
+    
     for(const char of lines[i]){
       if(char === '"'){
         inQuotes = !inQuotes;
@@ -853,57 +1349,77 @@ function parseCSV(csvText) {
     }
     parts.push(current.trim());
     
-    const [no, word, transliteration, chinese, example] = parts;
-    if(word) {
+    // 确保至少有单词列
+    if(parts.length >= 2 && parts[1]) {
+      const word = parts[1];
       result[word] = {
-        transliteration: transliteration || "暂无音标",
-        chinese: chinese || "暂无释义",
-        example: example || "No example"
+        transliteration: parts[2] || "暂无音标",
+        chinese: parts[3] || "暂无释义",
+        example: parts[4] || "No example"
       };
     }
   }
+  
   return result;
 }
 
-// 从文件内容导入单词库
+// 从文件内容导入单词库（不影响学习记录）
 function importFromFileContent(content, fileName) {
   try {
     const parsedData = parseCSV(content);
+    
     if(Object.keys(parsedData).length === 0) {
-      showAutoImportStatus("CSV文件为空或格式错误", "error");
-      return;
+      alert("❌ CSV文件为空或格式错误");
+      return false;
     }
     
     wordDatabase = parsedData;
     words = Object.keys(parsedData);
     // 导入后自动切换到未学单词列表
     switchToList('unmastered');
-    showAutoImportStatus(`✅ 成功导入 ${words.length} 个单词（来自 ${fileName}）`, "success");
+    showAutoImportStatus(`✅ 成功导入 ${words.length} 个单词（来自 ${fileName}）\n原有学习记录已保留并同步到云端`, "success");
     return true;
   } catch (error) {
-    showAutoImportStatus("❌ CSV解析失败，请检查格式", "error");
-    console.error(error);
+    alert("❌ CSV解析失败，请检查格式");
+    console.error("CSV解析错误:", error);
     return false;
   }
 }
 
-// 手动选择文件导入
+// 手动选择文件导入单词库
 function importCSV(event) {
+  if(isImporting) return;
+  
   const file = event.target.files[0];
   if(!file) return;
+  
+  // 清空文件输入，允许重复选择同一个文件
+  event.target.value = '';
+  
   readFile(file);
 }
 
 // 读取文件内容
 function readFile(file) {
+  if(isImporting) return;
+  
+  isImporting = true;
   const reader = new FileReader();
+  
   reader.onload = function(e) {
     importFromFileContent(e.target.result, file.name);
+    isImporting = false;
   };
+  
+  reader.onerror = function() {
+    alert("❌ 文件读取失败");
+    isImporting = false;
+  };
+  
   reader.readAsText(file, 'UTF-8');
 }
 
-// 导出CSV
+// 导出CSV单词库
 function exportCSV() {
   if(Object.keys(wordDatabase).length === 0) {
     alert('暂无单词数据可导出！');
@@ -930,29 +1446,42 @@ function exportCSV() {
 
 // 重置学习进度
 function resetMastered() {
-  if(confirm("确定要重置所有学习进度吗？此操作不可撤销！")) {
+  if(confirm("⚠️ 确定要重置所有学习进度吗？\n\n这将删除所有已学记录、收藏和错题本！\n云端数据也会被同步删除！\n建议先导出学习记录备份。")) {
     mastered = {};
+    favorites = [];
+    wrongWords = [];
     dailyData = {};
     dailyData[todayKey] = 0;
     saveData();
     switchToList('unmastered');
-    alert("学习进度已重置");
+    alert("✅ 学习进度已重置并同步到云端");
   }
 }
 
-// 显示自动导入状态
+// 显示状态提示：错误用弹窗，成功/信息用顶部状态条
 function showAutoImportStatus(message, type) {
+  if (type === 'error') {
+    // 所有错误提示使用可关闭弹窗
+    alert(message);
+    return;
+  }
+
   const statusEl = document.getElementById('autoImportStatus');
+  if (!statusEl) return;
+  
+  // 成功提示优先级高于信息提示
+  if (type === 'success') {
+    clearTimeout(statusEl.hideTimeout);
+  }
+  
   statusEl.innerHTML = message;
   statusEl.className = `auto-import-status ${type}`;
   statusEl.style.display = 'flex';
   
   // 3秒后自动隐藏成功和信息提示
-  if(type === 'success' || type === 'info') {
-    setTimeout(() => {
-      statusEl.style.display = 'none';
-    }, 3000);
-  }
+  statusEl.hideTimeout = setTimeout(() => {
+    statusEl.style.display = 'none';
+  }, 3000);
 }
 
 // ==================== 自动导入核心功能 ====================
@@ -960,7 +1489,7 @@ let fileHandle = null;
 
 // 检查是否支持File System Access API
 function isFileSystemAccessSupported() {
-  return 'showOpenFilePicker' in window;
+  return 'showOpenFilePicker' in window && window.location.protocol !== 'file:';
 }
 
 // 保存文件句柄到本地存储
@@ -994,8 +1523,8 @@ function forgetFileHandle() {
 
 // 自动导入文件
 async function autoImportCSV() {
+  if(isImporting) return;
   if(!isFileSystemAccessSupported()) {
-    showAutoImportStatus("⚠️ 您的浏览器不支持自动导入功能，请使用手动导入", "error");
     return;
   }
 
@@ -1004,56 +1533,35 @@ async function autoImportCSV() {
     const savedHandle = await getSavedFileHandle();
     if(savedHandle) {
       try {
+        isImporting = true;
         // 验证文件是否仍然存在且有权限
         const file = await savedHandle.getFile();
         const content = await file.text();
         if(importFromFileContent(content, file.name)) {
           fileHandle = savedHandle;
+          isImporting = false;
           return;
         }
+        isImporting = false;
       } catch (e) {
+        isImporting = false;
         console.log("保存的文件不可用，尝试选择新文件");
       }
     }
 
-    // 没有保存的句柄或句柄失效，尝试选择新文件
-    showAutoImportStatus("ℹ️ 请授权访问本地Toeic_words.csv文件（仅需授权一次）", "info");
-    
-    [fileHandle] = await window.showOpenFilePicker({
-      types: [
-        {
-          description: 'CSV Files',
-          accept: {
-            'text/csv': ['.csv']
-          }
-        }
-      ],
-      multiple: false,
-      suggestedName: 'Toeic_words.csv'
-    });
-
-    // 保存文件句柄以便下次自动使用
-    await saveFileHandle(fileHandle);
-    
-    // 读取文件内容
-    const file = await fileHandle.getFile();
-    const content = await file.text();
-    importFromFileContent(content, file.name);
+    // 没有保存的句柄或句柄失效，不显示任何提示
+    // 只有当用户手动点击导入时才会显示提示
 
   } catch (error) {
-    if(error.name === 'AbortError') {
-      // 用户取消了文件选择，不显示任何提示
-      console.log("用户取消了文件选择，使用默认单词库");
-    } else {
-      showAutoImportStatus(`❌ 自动导入失败：${error.message}`, "error");
-      console.error(error);
-    }
+    isImporting = false;
+    console.error("自动导入失败:", error);
   }
 }
 
 // ==================== 拖放导入功能 ====================
 function setupDragAndDrop() {
   const dropZone = document.getElementById('dropZone');
+  if (!dropZone) return;
   
   ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
     dropZone.addEventListener(eventName, preventDefaults, false);
@@ -1077,22 +1585,30 @@ function setupDragAndDrop() {
   });
 
   dropZone.addEventListener('drop', (e) => {
+    if(isImporting) return;
+    
     const files = e.dataTransfer.files;
     if(files.length > 0 && files[0].name.endsWith('.csv')) {
       readFile(files[0]);
     } else {
-      showAutoImportStatus("❌ 请拖放CSV文件", "error");
+      alert("❌ 请拖放CSV格式的单词库文件");
     }
   }, false);
 }
 
 // ==================== 模态框功能 ====================
 function showModal(id) {
-  document.getElementById(id).classList.add('active');
+  const modalEl = document.getElementById(id);
+  if (modalEl) {
+    modalEl.classList.add('active');
+  }
 }
 
 function closeModal(id) {
-  document.getElementById(id).classList.remove('active');
+  const modalEl = document.getElementById(id);
+  if (modalEl) {
+    modalEl.classList.remove('active');
+  }
 }
 
 // 点击模态框外部关闭
@@ -1120,20 +1636,26 @@ function switchToList(listType) {
     case 'unmastered':
       // 未学单词：过滤掉已学的
       deck = words.filter(word => !mastered[word]);
-      document.getElementById('currentListTitle').textContent = '📚 未学单词';
-      document.getElementById('returnBtn').style.display = 'none';
+      const unmasteredTitle = document.getElementById('currentListTitle');
+      if (unmasteredTitle) unmasteredTitle.textContent = '📚 未学单词';
+      const returnBtn1 = document.getElementById('returnBtn');
+      if (returnBtn1) returnBtn1.style.display = 'none';
       break;
     case 'favorites':
       // 收藏单词：过滤掉已学的
       deck = favorites.filter(word => !mastered[word]);
-      document.getElementById('currentListTitle').textContent = '⭐ 收藏单词';
-      document.getElementById('returnBtn').style.display = 'inline-flex';
+      const favoritesTitle = document.getElementById('currentListTitle');
+      if (favoritesTitle) favoritesTitle.textContent = '⭐ 收藏单词';
+      const returnBtn2 = document.getElementById('returnBtn');
+      if (returnBtn2) returnBtn2.style.display = 'inline-flex';
       break;
     case 'wrongWords':
       // 错题单词：过滤掉已学的
       deck = wrongWords.filter(word => !mastered[word]);
-      document.getElementById('currentListTitle').textContent = '❌ 错题单词';
-      document.getElementById('returnBtn').style.display = 'inline-flex';
+      const wrongTitle = document.getElementById('currentListTitle');
+      if (wrongTitle) wrongTitle.textContent = '❌ 错题单词';
+      const returnBtn3 = document.getElementById('returnBtn');
+      if (returnBtn3) returnBtn3.style.display = 'inline-flex';
       break;
   }
   
@@ -1146,7 +1668,8 @@ function switchToList(listType) {
   document.querySelectorAll('.stat-box').forEach(box => {
     box.classList.remove('active');
   });
-  document.getElementById(`${listType}Stat`).classList.add('active');
+  const activeStat = document.getElementById(`${listType}Stat`);
+  if (activeStat) activeStat.classList.add('active');
   
   updateUI();
 }
@@ -1163,9 +1686,12 @@ function showDailyChartModal() {
   const avgDaily = totalDays > 0 ? Math.round(totalLearned / totalDays * 10) / 10 : 0;
   
   // 更新统计数字
-  document.getElementById('totalDays').textContent = totalDays;
-  document.getElementById('totalLearned').textContent = totalLearned;
-  document.getElementById('avgDaily').textContent = avgDaily;
+  const totalDaysEl = document.getElementById('totalDays');
+  if (totalDaysEl) totalDaysEl.textContent = totalDays;
+  const totalLearnedEl = document.getElementById('totalLearned');
+  if (totalLearnedEl) totalLearnedEl.textContent = totalLearned;
+  const avgDailyEl = document.getElementById('avgDaily');
+  if (avgDailyEl) avgDailyEl.textContent = avgDaily;
   
   // 销毁旧图表
   if(dailyChart) {
@@ -1173,21 +1699,25 @@ function showDailyChartModal() {
   }
   
   // 创建新图表
-  const ctx = document.getElementById('dailyChart').getContext('2d');
-  dailyChart = new Chart(ctx, {
+  const ctx = document.getElementById('dailyChart');
+  if (!ctx) return;
+  
+  const isDark = document.body.classList.contains('dark-theme');
+  
+  dailyChart = new Chart(ctx.getContext('2d'), {
     type: 'line',
     data: {
       labels: dates,
       datasets: [{
         label: '每日学习单词数',
         data: counts,
-        backgroundColor: 'rgba(37, 99, 235, 0.1)',
-        borderColor: '#2563eb',
+        backgroundColor: 'rgba(99, 102, 241, 0.1)',
+        borderColor: '#6366f1',
         borderWidth: 2,
         tension: 0.4,
         fill: true,
         pointBackgroundColor: '#ffffff',
-        pointBorderColor: '#2563eb',
+        pointBorderColor: '#6366f1',
         pointBorderWidth: 2,
         pointRadius: 4
       }]
@@ -1200,6 +1730,9 @@ function showDailyChartModal() {
           display: false
         },
         tooltip: {
+          backgroundColor: isDark ? '#27272a' : 'rgba(255, 255, 255, 0.9)',
+          titleColor: isDark ? '#fafafa' : '#0f172a',
+          bodyColor: isDark ? '#a1a1aa' : '#64748b',
           callbacks: {
             title: function(context) {
               return context[0].label;
@@ -1214,15 +1747,19 @@ function showDailyChartModal() {
         y: {
           beginAtZero: true,
           ticks: {
-            stepSize: 10
+            stepSize: 10,
+            color: isDark ? '#a1a1aa' : '#64748b'
           },
           grid: {
-            color: 'rgba(0, 0, 0, 0.05)'
+            color: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)'
           }
         },
         x: {
           grid: {
             display: false
+          },
+          ticks: {
+            color: isDark ? '#a1a1aa' : '#64748b'
           }
         }
       }
@@ -1239,8 +1776,13 @@ function currentWord(){
 
 function updateUI(){
   const word = currentWord();
-  document.getElementById("word").innerText = word;
-  document.getElementById("indexText").innerText = (index + 1) + " / " + deck.length;
+  
+  // 安全更新所有UI元素
+  const wordEl = document.getElementById("word");
+  if (wordEl) wordEl.innerText = word;
+  
+  const indexTextEl = document.getElementById("indexText");
+  if (indexTextEl) indexTextEl.innerText = (index + 1) + " / " + deck.length;
 
   const info = wordDatabase[word] || {
     transliteration: "暂无音标",
@@ -1248,25 +1790,42 @@ function updateUI(){
     example: "No example"
   };
 
-  document.getElementById("transliteration").innerText = info.transliteration;
-  document.getElementById("chinese").innerText = info.chinese;
-  document.getElementById("example").innerText = info.example;
-  document.getElementById("details").style.display = reveal ? "block" : "none";
+  const transliterationEl = document.getElementById("transliteration");
+  if (transliterationEl) transliterationEl.innerText = info.transliteration;
+  
+  const chineseEl = document.getElementById("chinese");
+  if (chineseEl) chineseEl.innerText = info.chinese;
+  
+  const exampleEl = document.getElementById("example");
+  if (exampleEl) exampleEl.innerText = info.example;
+  
+  const detailsEl = document.getElementById("details");
+  if (detailsEl) detailsEl.style.display = reveal ? "block" : "none";
 
   // 更新统计数字
   const unmasteredCount = words.filter(word => !mastered[word]).length;
   const favoriteCount = favorites.filter(word => !mastered[word]).length;
   const wrongCount = wrongWords.filter(word => !mastered[word]).length;
   
-  document.getElementById("unmasteredCount").innerText = unmasteredCount;
-  document.getElementById("favoriteCount").innerText = favoriteCount;
-  document.getElementById("wrongCount").innerText = wrongCount;
-  document.getElementById("dailyCount").innerText = dailyData[todayKey];
+  const unmasteredCountEl = document.getElementById("unmasteredCount");
+  if (unmasteredCountEl) unmasteredCountEl.innerText = unmasteredCount;
+  
+  const favoriteCountEl = document.getElementById("favoriteCount");
+  if (favoriteCountEl) favoriteCountEl.innerText = favoriteCount;
+  
+  const wrongCountEl = document.getElementById("wrongCount");
+  if (wrongCountEl) wrongCountEl.innerText = wrongCount;
+  
+  const dailyCountEl = document.getElementById("dailyCount");
+  if (dailyCountEl) dailyCountEl.innerText = dailyData[todayKey];
 
   // 更新进度条
   const progress = Math.round(Object.keys(mastered).length / words.length * 100);
-  document.getElementById("progressText").innerText = progress + "%";
-  document.getElementById("progress").style.width = progress + "%";
+  const progressTextEl = document.getElementById("progressText");
+  if (progressTextEl) progressTextEl.innerText = progress + "%";
+  
+  const progressEl = document.getElementById("progress");
+  if (progressEl) progressEl.style.width = progress + "%";
 
   saveData();
 }
@@ -1370,6 +1929,8 @@ function toggleAutoPlay(){
   
   autoPlay = !autoPlay;
   const btn = document.getElementById("autoBtn");
+  if (!btn) return;
+  
   if(autoPlay){
     btn.innerText = "⏸️ 暂停";
     // 开始自动播放时先发音当前单词
@@ -1417,6 +1978,8 @@ function speakWord(event){
 // 自动播放间隔设置
 function updateInterval() {
   const input = document.getElementById('intervalInput');
+  if (!input) return;
+  
   const value = parseFloat(input.value);
   
   if(isNaN(value) || value < 1 || value > 30) {
@@ -1437,46 +2000,53 @@ function updateInterval() {
 }
 
 // 搜索功能
-document.getElementById("searchInput").addEventListener("input", function(){
-  const value = this.value.toLowerCase();
-  let baseList;
-  
-  // 根据当前列表类型获取基础列表
-  switch(currentList) {
-    case 'unmastered':
-      baseList = words.filter(word => !mastered[word]);
-      break;
-    case 'favorites':
-      baseList = favorites.filter(word => !mastered[word]);
-      break;
-    case 'wrongWords':
-      baseList = wrongWords.filter(word => !mastered[word]);
-      break;
-  }
-  
-  // 搜索过滤
-  deck = baseList.filter(word => word.toLowerCase().includes(value));
-  
-  if(deck.length === 0) {
-    deck = ["无匹配结果"];
-  }
-  index = 0;
-  reveal = false;
-  updateUI();
-  // 搜索后自动发音第一个结果
-  setTimeout(() => {
-    speakWord();
-  }, 100);
-});
+const searchInput = document.getElementById("searchInput");
+if (searchInput) {
+  searchInput.addEventListener("input", function(){
+    const value = this.value.toLowerCase();
+    let baseList;
+    
+    // 根据当前列表类型获取基础列表
+    switch(currentList) {
+      case 'unmastered':
+        baseList = words.filter(word => !mastered[word]);
+        break;
+      case 'favorites':
+        baseList = favorites.filter(word => !mastered[word]);
+        break;
+      case 'wrongWords':
+        baseList = wrongWords.filter(word => !mastered[word]);
+        break;
+    }
+    
+    // 搜索过滤
+    deck = baseList.filter(word => word.toLowerCase().includes(value));
+    
+    if(deck.length === 0) {
+      deck = ["无匹配结果"];
+    }
+    index = 0;
+    reveal = false;
+    updateUI();
+    // 搜索后自动发音第一个结果
+    setTimeout(() => {
+      speakWord();
+    }, 100);
+  });
+}
 
 // 页面加载时自动执行
 window.addEventListener('load', async () => {
+  initTheme(); // 初始化主题
   initCollapsibleState(); // 初始化折叠状态
   setupDragAndDrop();
+  setupAutoCollapse(); // 设置自动折叠功能
   // 初始化时切换到未学单词列表
   switchToList('unmastered');
   // 延迟一点执行自动导入，让页面先加载完成
   setTimeout(autoImportCSV, 500);
+  // 初始化Firebase匿名登录，开启云端同步
+  signInAnonymously();
 });
 </script>
 
