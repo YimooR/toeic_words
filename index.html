@@ -3,15 +3,12 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>TOEIC 单词背诵系统</title>
-<!-- 引入Chart.js用于绘制图表 -->
+<title>英语单词记忆系统</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
-<!-- 引入Firebase SDK -->
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
 <style>
-/* 全局样式重置与基础变量 */
 :root {
   --primary: #2563eb;
   --primary-hover: #1d4ed8;
@@ -27,812 +24,232 @@
   --text-secondary: #64748b;
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
   --radius-lg: 16px;
   --radius-md: 12px;
   --radius-sm: 8px;
-  --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  --transition: all 0.3 cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* 夜晚模式变量（护眼专业版） */
 .dark-theme {
-  /* 主色调：柔和靛蓝色，降低蓝光，护眼效果更好 */
   --primary: #6366f1;
   --primary-hover: #4f46e5;
-  
-  /* 辅助色：降低饱和度，避免刺眼 */
   --secondary: #71717a;
   --secondary-hover: #52525b;
   --success: #10b981;
   --warning: #f59e0b;
   --danger: #ef4444;
-  
-  /* 背景系统：分层灰度设计，避免纯黑 */
-  --background: #18181b; /* 页面背景：深中性灰 */
-  --card-bg: #27272a;     /* 卡片背景：比页面稍亮 */
-  --border: #3f3f46;      /* 边框：柔和灰色 */
-  
-  /* 文字系统：避免纯白，减少反光 */
-  --text-primary: #fafafa;   /* 主文字：柔和白色 */
-  --text-secondary: #a1a1aa; /* 次文字：中性灰色 */
-  
-  /* 阴影系统：深色背景下更柔和的阴影 */
+  --background: #18181b;
+  --card-bg: #27272a;
+  --border: #3f3f46;
+  --text-primary: #fafafa;
+  --text-secondary: #a1a1aa;
   --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.5);
   --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.6), 0 2px 4px -1px rgba(0, 0, 0, 0.5);
-  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.7), 0 4px 6px -2px rgba(0, 0, 0, 0.6);
-  --shadow-xl: 0 20px 25px -5px rgba(0, 0, 0, 0.8), 0 10px 10px -5px rgba(0, 0, 0, 0.7);
 }
 
-* {
-  margin: 0;
-  padding: 0;
-  box-sizing: border-box;
-}
-
+* {margin:0;padding:0;box-sizing:border-box;}
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   background: var(--background);
   color: var(--text-primary);
-  line-height: 1.6;
-  padding: 16px;
-  min-height: 100vh;
-  transition: var(--transition);
+  line-height:1.6;
+  padding:16px;
+  min-height:100vh;
+  transition:var(--transition);
 }
+.container {max-width:800px;margin:0 auto;}
+.header {display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;}
+.theme-toggle {background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius-md);padding:8px 12px;cursor:pointer;font-size:1.2rem;transition:var(--transition);}
+.theme-toggle:hover {background:var(--background);border-color:var(--primary);}
+.card {background:var(--card-bg);border-radius:var(--radius-lg);padding:24px;margin-bottom:20px;box-shadow:var(--shadow-md);transition:var(--transition);}
+h1 {font-size:clamp(1.8rem,4vw,2.5rem);font-weight:700;margin-bottom:0;background:linear-gradient(135deg,var(--primary),#8b5cf6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
+h2 {font-size:clamp(1.2rem,3vw,1.5rem);font-weight:600;margin-bottom:16px;color:var(--text-primary);}
+h3 {font-size:clamp(1rem,2vw,1.2rem);font-weight:600;margin-bottom:12px;color:var(--text-primary);}
+.sync-status {display:flex;align-items:center;gap:6px;font-size:0.85rem;color:var(--text-secondary);margin-top:8px;}
+.sync-status.syncing {color:var(--warning);}
+.sync-status.synced {color:var(--success);}
+.sync-status.error {color:var(--danger);}
+.sync-status.local {color:var(--secondary);}
+.user-status {display:flex;align-items:center;gap:8px;margin-top:12px;padding:10px 14px;background:var(--background);border-radius:var(--radius-md);}
+.user-status .user-email {font-weight:500;color:var(--primary);max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.collapsible-header {display:flex;justify-content:space-between;align-items:center;cursor:pointer;padding:12px 0;border-bottom:1px solid var(--border);margin-bottom:16px;transition:var(--transition);}
+.collapsible-header:hover {color:var(--primary);}
+.collapsible-header h3 {margin:0;display:flex;align-items:center;gap:8px;}
+.collapse-icon {transition:var(--transition);font-size:1.2rem;color:var(--secondary);}
+.collapsed .collapse-icon {transform:rotate(-90deg);}
+.collapsible-content {overflow:hidden;transition:max-height 0.5s ease-in-out,opacity 0.3s ease-in-out;max-height:2000px;opacity:1;}
+.collapsed .collapsible-content {max-height:0;opacity:0;margin-bottom:0;}
+.import-area {background:var(--background);border-radius:var(--radius-md);padding:20px;border:1px dashed var(--border);margin-bottom:24px;}
+.auto-import-status {padding:12px 16px;border-radius:var(--radius-sm);margin-bottom:16px;text-align:center;font-weight:500;display:flex;align-items:center;justify-content:center;gap:8px;}
+.auto-import-status.success {background:#dcfce7;color:#166534;border:1px solid #bbf7d0;}
+.auto-import-status.info {background:#dbeafe;color:#1e40af;border:1px solid #bfdbfe;}
+.auto-import-status.error {background:#fee2e2;color:#991b1b;border:1px solid #fecaca;}
+.dark-theme .auto-import-status.success {background:#064e3b;color:#6ee7b7;border:1px solid #047857;}
+.dark-theme .auto-import-status.info {background:#1e3a8a;color:#93c5fd;border:1px solid #1d4ed8;}
+.dark-theme .auto-import-status.error {background:#7f1d1d;color:#fca5a5;border:1px solid #b91c1c;}
+.drop-zone {border:2px dashed var(--border);border-radius:var(--radius-md);padding:24px;text-align:center;margin-bottom:16px;transition:var(--transition);cursor:pointer;}
+.drop-zone:hover,.drop-zone.active {border-color:var(--primary);background:rgba(99,102,241,0.1);}
+.drop-zone input[type="file"] {display:none;}
+button {padding:10px 16px;border:none;border-radius:var(--radius-md);cursor:pointer;font-size:0.95rem;font-weight:500;transition:var(--transition);display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap;}
+button.primary {background:var(--primary);color:#fff;}
+button.primary:hover {background:var(--primary-hover);transform:translateY(-1px);}
+button.secondary {background:var(--secondary);color:#fff;}
+button.secondary:hover {background:var(--secondary-hover);transform:translateY(-1px);}
+button.outline {background:transparent;color:var(--text-primary);border:1px solid var(--border);}
+button.outline:hover {background:var(--background);border-color:var(--primary);color:var(--primary);}
+button.danger {background:var(--danger);color:#fff;}
+button.danger:hover {background:#dc2626;transform:translateY(-1px);}
+.button-group {display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;}
+input {width:100%;padding:12px 16px;border-radius:var(--radius-md);border:1px solid var(--border);font-size:1rem;transition:var(--transition);background:var(--card-bg);color:var(--text-primary);}
+input:focus {outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(99,102,241,0.1);}
+#searchInput {margin-bottom:20px;}
+.progress-bar {width:100%;height:8px;background:var(--border);border-radius:999px;overflow:hidden;margin:20px 0 8px 0;}
+.progress {height:100%;background:linear-gradient(90deg,var(--primary),#8b5cf6);width:0%;transition:width 0.5s ease-in-out;border-radius:999px;}
+#progressText {text-align:center;color:var(--text-secondary);margin-bottom:20px;font-size:0.9rem;}
+.stats {display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:16px;margin-top:20px;}
+.stat-box {background:var(--background);border-radius:var(--radius-md);padding:16px;text-align:center;transition:var(--transition);cursor:pointer;}
+.stat-box:hover {transform:translateY(-2px);box-shadow:var(--shadow-sm);}
+.stat-box.active {background:rgba(99,102,241,0.1);border:2px solid var(--primary);}
+.stat-box h3 {font-size:0.9rem;color:var(--text-secondary);margin-bottom:8px;font-weight:500;}
+.stat-box p {font-size:1.5rem;font-weight:700;color:var(--primary);transition:var(--transition);}
+.learning-list-title {display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
+.word-card {border:2px solid var(--border);border-radius:var(--radius-lg);padding:40px 24px;text-align:center;cursor:pointer;transition:var(--transition);min-height:300px;display:flex;flex-direction:column;justify-content:center;align-items:center;background:linear-gradient(135deg,var(--card-bg) 0%,var(--background) 100%);}
+.word-card:hover {border-color:var(--primary);box-shadow:var(--shadow-lg);transform:translateY(-2px);}
+#indexText {font-size:0.9rem;color:var(--text-secondary);margin-bottom:20px;}
+.word {font-size:clamp(2.5rem,8vw,4rem);font-weight:700;margin-bottom:12px;color:var(--text-primary);}
+.transliteration {font-size:clamp(1.2rem,4vw,1.8rem);color:var(--text-secondary);margin-bottom:24px;font-style:italic;}
+#hint {font-size:0.95rem;color:var(--text-secondary);margin-top:20px;}
+#details {width:100%;margin-top:24px;text-align:left;}
+.info-box {background:var(--background);border-radius:var(--radius-md);padding:16px;margin-top:16px;border-left:4px solid var(--primary);}
+.info-box h3 {font-size:1rem;margin-bottom:8px;color:var(--primary);}
+.controls {display:flex;flex-wrap:wrap;gap:8px;margin-top:24px;justify-content:center;align-items:center;}
+.playback-controls {display:flex;flex-wrap:wrap;gap:8px;margin-bottom:24px;justify-content:center;align-items:center;}
+.interval-setting {display:flex;align-items:center;gap:8px;white-space:nowrap;}
+.interval-setting input {width:80px;text-align:center;}
+.empty {background:var(--background);padding:20px;border-radius:var(--radius-md);color:var(--text-secondary);text-align:center;font-style:italic;}
+.modal-overlay {position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:1000;opacity:0;visibility:hidden;transition:var(--transition);padding:20px;}
+.modal-overlay.active {opacity:1;visibility:visible;}
+.modal {background:var(--card-bg);border-radius:var(--radius-lg);padding:24px;max-width:450px;width:100%;max-height:80vh;overflow-y:auto;box-shadow:var(--shadow-xl);transform:translateY(20px);transition:var(--transition);}
+.modal-overlay.active .modal {transform:translateY(0);}
+.modal-header {display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid var(--border);}
+.modal-close {background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--text-secondary);padding:0;width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:50%;}
+.modal-close:hover {background:var(--background);color:var(--text-primary);}
+.form-group {margin-bottom:16px;}
+.form-group label {display:block;margin-bottom:6px;font-weight:500;color:var(--text-primary);}
+.form-group input {width:100%;}
+.form-footer {margin-top:20px;text-align:center;color:var(--text-secondary);font-size:0.9rem;}
+.form-footer a {color:var(--primary);cursor:pointer;text-decoration:underline;}
+.form-footer .forgot-password {float:right;margin-top:-10px;font-size:0.85rem;}
+.chart-container {position:relative;height:300px;width:100%;}
+.footer {text-align:center;padding:20px;color:var(--text-secondary);font-size:0.9rem;margin-top:40px;}
 
-.container {
-  max-width: 800px;
-  margin: 0 auto;
-}
+.backup-list {margin-top:16px;max-height:320px;overflow-y:auto;}
+.backup-item {display:flex;justify-content:space-between;align-items:center;padding:12px;border:1px solid var(--border);border-radius:var(--radius-md);margin-bottom:10px;gap:10px;}
+.backup-info {flex:1;min-width:0;}
+.backup-name {font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.backup-time {font-size:0.85rem;color:var(--text-secondary);margin-top:4px;}
+.backup-btn-group {display:flex;gap:6px;flex-shrink:0;}
+.backup-btn-group button {padding:6px 10px;font-size:0.85rem;}
 
-/* 头部标题区域 */
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-}
-
-/* 主题切换按钮 */
-.theme-toggle {
-  background: var(--card-bg);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-md);
-  padding: 8px 12px;
-  cursor: pointer;
-  font-size: 1.2rem;
-  transition: var(--transition);
-}
-
-.theme-toggle:hover {
-  background: var(--background);
-  border-color: var(--primary);
-}
-
-/* 卡片通用样式 */
-.card {
-  background: var(--card-bg);
-  border-radius: var(--radius-lg);
-  padding: 24px;
-  margin-bottom: 20px;
-  box-shadow: var(--shadow-md);
-  transition: var(--transition);
-}
-
-.card:hover {
-  box-shadow: var(--shadow-lg);
-}
-
-/* 标题样式 */
-h1 {
-  font-size: clamp(1.8rem, 4vw, 2.5rem);
-  font-weight: 700;
-  margin-bottom: 0;
-  background: linear-gradient(135deg, var(--primary), #8b5cf6);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-}
-
-h2 {
-  font-size: clamp(1.2rem, 3vw, 1.5rem);
-  font-weight: 600;
-  margin-bottom: 16px;
-  color: var(--text-primary);
-}
-
-h3 {
-  font-size: clamp(1rem, 2vw, 1.2rem);
-  font-weight: 600;
-  margin-bottom: 12px;
-  color: var(--text-primary);
-}
-
-/* 同步状态样式 */
-.sync-status {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 0.85rem;
-  color: var(--text-secondary);
-  margin-top: 8px;
-}
-
-.sync-status.syncing {
-  color: var(--warning);
-}
-
-.sync-status.synced {
-  color: var(--success);
-}
-
-.sync-status.error {
-  color: var(--danger);
-}
-
-.sync-status.local {
-  color: var(--secondary);
-}
-
-/* 可折叠区域样式 */
-.collapsible-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  cursor: pointer;
-  padding: 12px 0;
-  border-bottom: 1px solid var(--border);
-  margin-bottom: 16px;
-  transition: var(--transition);
-}
-
-.collapsible-header:hover {
-  color: var(--primary);
-}
-
-.collapsible-header h3 {
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.collapse-icon {
-  transition: var(--transition);
-  font-size: 1.2rem;
-  color: var(--secondary);
-}
-
-.collapsed .collapse-icon {
-  transform: rotate(-90deg);
-}
-
-.collapsible-content {
-  overflow: hidden;
-  transition: max-height 0.5s ease-in-out, opacity 0.3s ease-in-out;
-  max-height: 1000px;
-  opacity: 1;
-}
-
-.collapsed .collapsible-content {
-  max-height: 0;
-  opacity: 0;
-  margin-bottom: 0;
-}
-
-/* 导入区域样式 */
-.import-area {
-  background: var(--background);
-  border-radius: var(--radius-md);
-  padding: 20px;
-  border: 1px dashed var(--border);
-}
-
-.auto-import-status {
-  padding: 12px 16px;
-  border-radius: var(--radius-sm);
-  margin-bottom: 16px;
-  text-align: center;
-  font-weight: 500;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-}
-
-.auto-import-status.success {
-  background: #dcfce7;
-  color: #166534;
-  border: 1px solid #bbf7d0;
-}
-
-.auto-import-status.info {
-  background: #dbeafe;
-  color: #1e40af;
-  border: 1px solid #bfdbfe;
-}
-
-.dark-theme .auto-import-status.success {
-  background: #064e3b;
-  color: #6ee7b7;
-  border: 1px solid #047857;
-}
-
-.dark-theme .auto-import-status.info {
-  background: #1e3a8a;
-  color: #93c5fd;
-  border: 1px solid #1d4ed8;
-}
-
-.drop-zone {
-  border: 2px dashed var(--border);
-  border-radius: var(--radius-md);
-  padding: 24px;
-  text-align: center;
-  margin-bottom: 16px;
-  transition: var(--transition);
-  cursor: pointer;
-}
-
-.drop-zone:hover, .drop-zone.active {
-  border-color: var(--primary);
-  background: rgba(99, 102, 241, 0.1);
-}
-
-.drop-zone input[type="file"] {
+/* 登录时隐藏主内容 */
+#mainContent {
   display: none;
 }
 
-/* 按钮样式 */
-button {
-  padding: 10px 16px;
-  border: none;
-  border-radius: var(--radius-md);
-  cursor: pointer;
-  font-size: 0.95rem;
-  font-weight: 500;
-  transition: var(--transition);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  white-space: nowrap;
+#mainContent.visible {
+  display: block;
 }
 
-button.primary {
-  background: var(--primary);
-  color: white;
+@media (max-width:600px){
+  body{padding:12px;}
+  .card{padding:20px;}
+  .stats{grid-template-columns:repeat(2,1fr);}
+  .word{font-size:2.2rem;}
+  .transliteration{font-size:1.4rem;}
+  .controls{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;}
+  .controls button{width:100%;}
+  .playback-controls{flex-direction:column;align-items:stretch;}
+  .playback-controls button{width:100%;}
+  .interval-setting{justify-content:center;}
+  .button-group{display:grid;grid-template-columns:repeat(2,1fr);}
+  .modal{padding:20px;}
+  .chart-container{height:250px;}
+  .learning-list-title{flex-direction:column;align-items:flex-start;gap:10px;}
+  .backup-item{flex-wrap:wrap;}
+  .user-status{flex-direction:column;align-items:flex-start;}
 }
-
-button.primary:hover {
-  background: var(--primary-hover);
-  transform: translateY(-1px);
-}
-
-button.secondary {
-  background: var(--secondary);
-  color: white;
-}
-
-button.secondary:hover {
-  background: var(--secondary-hover);
-  transform: translateY(-1px);
-}
-
-button.outline {
-  background: transparent;
-  color: var(--text-primary);
-  border: 1px solid var(--border);
-}
-
-button.outline:hover {
-  background: var(--background);
-  border-color: var(--primary);
-  color: var(--primary);
-}
-
-button.success {
-  background: var(--success);
-  color: white;
-}
-
-button.success:hover {
-  background: #059669;
-  transform: translateY(-1px);
-}
-
-.button-group {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 12px;
-}
-
-/* 输入框样式 */
-input {
-  width: 100%;
-  padding: 12px 16px;
-  border-radius: var(--radius-md);
-  border: 1px solid var(--border);
-  font-size: 1rem;
-  transition: var(--transition);
-  background: var(--card-bg);
-  color: var(--text-primary);
-}
-
-input:focus {
-  outline: none;
-  border-color: var(--primary);
-  box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.1);
-}
-
-/* 搜索框样式（增加底部间距） */
-#searchInput {
-  margin-bottom: 20px;
-}
-
-/* 进度条样式 */
-.progress-bar {
-  width: 100%;
-  height: 8px;
-  background: var(--border);
-  border-radius: 999px;
-  overflow: hidden;
-  margin: 20px 0 8px 0;
-}
-
-.progress {
-  height: 100%;
-  background: linear-gradient(90deg, var(--primary), #8b5cf6);
-  width: 0%;
-  transition: width 0.5s ease-in-out;
-  border-radius: 999px;
-}
-
-#progressText {
-  text-align: center;
-  color: var(--text-secondary);
-  margin-bottom: 20px;
-  font-size: 0.9rem;
-}
-
-/* 统计卡片样式 */
-.stats {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 16px;
-  margin-top: 20px;
-}
-
-.stat-box {
-  background: var(--background);
-  border-radius: var(--radius-md);
-  padding: 16px;
-  text-align: center;
-  transition: var(--transition);
-  cursor: pointer;
-}
-
-.stat-box:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-sm);
-}
-
-.stat-box.active {
-  background: rgba(99, 102, 241, 0.1);
-  border: 2px solid var(--primary);
-}
-
-.stat-box h3 {
-  font-size: 0.9rem;
-  color: var(--text-secondary);
-  margin-bottom: 8px;
-  font-weight: 500;
-}
-
-.stat-box p {
-  font-size: 1.5rem;
-  font-weight: 700;
-  color: var(--primary);
-  transition: var(--transition);
-}
-
-.stat-box:hover p {
-  color: var(--primary-hover);
-}
-
-/* 学习列表标题 */
-.learning-list-title {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-}
-
-.learning-list-title h2 {
-  margin: 0;
-}
-
-/* 单词卡片样式 */
-.word-card {
-  border: 2px solid var(--border);
-  border-radius: var(--radius-lg);
-  padding: 40px 24px;
-  text-align: center;
-  cursor: pointer;
-  transition: var(--transition);
-  min-height: 300px;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  align-items: center;
-  background: linear-gradient(135deg, var(--card-bg) 0%, var(--background) 100%);
-}
-
-.word-card:hover {
-  border-color: var(--primary);
-  box-shadow: var(--shadow-lg);
-  transform: translateY(-2px);
-}
-
-.word-card:active {
-  transform: translateY(0);
-}
-
-#indexText {
-  font-size: 0.9rem;
-  color: var(--text-secondary);
-  margin-bottom: 20px;
-}
-
-.word {
-  font-size: clamp(2.5rem, 8vw, 4rem);
-  font-weight: 700;
-  margin-bottom: 12px;
-  color: var(--text-primary);
-}
-
-.transliteration {
-  font-size: clamp(1.2rem, 4vw, 1.8rem);
-  color: var(--text-secondary);
-  margin-bottom: 24px;
-  font-style: italic;
-}
-
-#hint {
-  font-size: 0.95rem;
-  color: var(--text-secondary);
-  margin-top: 20px;
-}
-
-/* 详情区域样式 */
-#details {
-  width: 100%;
-  margin-top: 24px;
-  text-align: left;
-}
-
-.info-box {
-  background: var(--background);
-  border-radius: var(--radius-md);
-  padding: 16px;
-  margin-top: 16px;
-  border-left: 4px solid var(--primary);
-}
-
-.info-box h3 {
-  font-size: 1rem;
-  margin-bottom: 8px;
-  color: var(--primary);
-}
-
-/* 控制按钮区域 */
-.controls {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-top: 24px;
-  justify-content: center;
-  align-items: center;
-}
-
-/* 自动播放控制区域（与按钮同一行） */
-.playback-controls {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  margin-bottom: 24px; /* 增加底部间距，避免与单词卡片贴在一起 */
-  justify-content: center;
-  align-items: center;
-}
-
-/* 自动播放间隔设置 */
-.interval-setting {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  white-space: nowrap;
-}
-
-.interval-setting input {
-  width: 80px;
-  text-align: center;
-}
-
-/* 列表样式 */
-.list-item {
-  background: var(--background);
-  border-radius: var(--radius-md);
-  padding: 12px;
-  margin-bottom: 8px;
-  transition: var(--transition);
-  border-left: 3px solid transparent;
-}
-
-.list-item:hover {
-  border-left-color: var(--primary);
-  transform: translateX(2px);
-}
-
-.list-item strong {
-  color: var(--text-primary);
-  font-size: 1.1rem;
-}
-
-.list-item div {
-  color: var(--text-secondary);
-  font-size: 0.9rem;
-  margin-top: 4px;
-}
-
-.empty {
-  background: var(--background);
-  padding: 20px;
-  border-radius: var(--radius-md);
-  color: var(--text-secondary);
-  text-align: center;
-  font-style: italic;
-}
-
-/* 模态框样式 */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  opacity: 0;
-  visibility: hidden;
-  transition: var(--transition);
-  padding: 20px;
-}
-
-.modal-overlay.active {
-  opacity: 1;
-  visibility: visible;
-}
-
-.modal {
-  background: var(--card-bg);
-  border-radius: var(--radius-lg);
-  padding: 24px;
-  max-width: 600px;
-  width: 100%;
-  max-height: 80vh;
-  overflow-y: auto;
-  box-shadow: var(--shadow-xl);
-  transform: translateY(20px);
-  transition: var(--transition);
-}
-
-.modal-overlay.active .modal {
-  transform: translateY(0);
-}
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid var(--border);
-}
-
-.modal-close {
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  cursor: pointer;
-  color: var(--text-secondary);
-  padding: 0;
-  width: 30px;
-  height: 30px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-}
-
-.modal-close:hover {
-  background: var(--background);
-  color: var(--text-primary);
-}
-
-/* 图表容器 */
-.chart-container {
-  position: relative;
-  height: 300px;
-  width: 100%;
-}
-
-/* 页脚版权信息 */
-.footer {
-  text-align: center;
-  padding: 20px;
-  color: var(--text-secondary);
-  font-size: 0.9rem;
-  margin-top: 40px;
-}
-
-.footer a {
-  color: var(--primary);
-  text-decoration: none;
-}
-
-.footer a:hover {
-  text-decoration: underline;
-}
-
-/* 响应式媒体查询 */
-@media (max-width: 600px) {
-  body {
-    padding: 12px;
-  }
-  
-  .card {
-    padding: 20px;
-  }
-  
-  .stats {
-    grid-template-columns: repeat(2, 1fr);
-  }
-  
-  .word {
-    font-size: 2.2rem;
-  }
-  
-  .transliteration {
-    font-size: 1.4rem;
-  }
-  
-  .controls {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
-  }
-  
-  .controls button {
-    width: 100%;
-  }
-  
-  .playback-controls {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  
-  .playback-controls button {
-    width: 100%;
-  }
-  
-  .interval-setting {
-    justify-content: center;
-  }
-  
-  .button-group {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-  }
-  
-  .modal {
-    padding: 20px;
-  }
-  
-  .chart-container {
-    height: 250px;
-  }
-  
-  .learning-list-title {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 10px;
-  }
-}
-
-@media (max-width: 400px) {
-  .stats {
-    grid-template-columns: 1fr;
-  }
-  
-  .controls {
-    grid-template-columns: 1fr;
-  }
-  
-  .button-group {
-    grid-template-columns: 1fr;
-  }
+@media (max-width:400px){
+  .stats{grid-template-columns:1fr;}
+  .controls{grid-template-columns:1fr;}
+  .button-group{grid-template-columns:1fr;}
 }
 </style>
 </head>
 <body>
-
-<div class="container">
-
-  <!-- 头部卡片 -->
+<!-- 主内容区域 -->
+<div id="mainContent" class="container">
   <div class="card">
     <div class="header">
       <h1>TOEIC 单词背诵系统</h1>
       <button class="theme-toggle" onclick="toggleTheme()" id="themeToggle">🌙</button>
     </div>
-    
-    <!-- 云端同步状态显示 -->
+
+    <!-- 登录状态显示 -->
+    <div id="userStatus" class="user-status" style="display:none;">
+      <span>👤 已登录：</span>
+      <span id="userEmail" class="user-email"></span>
+      <button class="outline" onclick="showLoginModal()">切换账号</button>
+      <button class="danger" onclick="signOut()">登出</button>
+    </div>
+
     <div id="syncStatus" class="sync-status">
       <span>☁️</span> <span id="syncStatusText">正在连接云端...</span>
     </div>
-    
-    <!-- 自动导入状态显示（仅用于成功和信息提示） -->
-    <div id="autoImportStatus" class="auto-import-status" style="display: none;"></div>
+    <div id="autoImportStatus" class="auto-import-status" style="display:none;"></div>
 
-    <!-- 可折叠的单词库与学习记录管理区域 -->
+    <!-- 合并后的单词库与云端备份管理 -->
     <div class="collapsible" id="wordLibraryManager">
       <div class="collapsible-header" onclick="toggleCollapsible('wordLibraryManager')">
-        <h3><span>📚</span> 单词库与学习记录管理</h3>
+        <h3><span>📚</span> 单词库与云端备份管理</h3>
         <span class="collapse-icon">▼</span>
       </div>
       <div class="collapsible-content">
-        <p style="color: var(--text-secondary); margin-bottom: 16px;">
-          ✨ 自动导入本地Toeic_words.csv | 云端自动同步，跨设备永久保存
+        <p style="color:var(--text-secondary);margin-bottom:16px;">
+          导入CSV自动同步单词库+学习记录到云端备份 | 跨设备恢复任意历史版本
         </p>
         
+        <!-- 单词库导入区域 -->
         <div class="import-area">
           <div id="dropZone" class="drop-zone">
             <p>拖放CSV文件到此处导入单词库</p>
-            <p style="margin: 8px 0; color: var(--text-secondary);">或</p>
+            <p style="margin:8px 0;color:var(--text-secondary);">或</p>
             <button class="primary" onclick="document.getElementById('csvFileInput').click()">选择单词库文件</button>
             <input type="file" id="csvFileInput" accept=".csv" onchange="importCSV(event)">
           </div>
-          
+        </div>
+
+        <!-- 云端备份与操作按钮区 -->
+        <div>
+          <h3 style="margin-bottom:12px;"><span>☁️</span> 云端备份与数据操作</h3>
+          <p style="color:var(--text-secondary);margin-bottom:12px;font-size:0.9rem;">
+            导入单词库自动生成云端备份，可随时导出、同步、重置或恢复历史版本
+          </p>
           <div class="button-group">
+            <button class="primary" onclick="showCreateBackupModal()">💾 手动新建云端备份</button>
+            <button class="outline" onclick="refreshBackupList()">🔄 刷新备份列表</button>
             <button class="outline" onclick="exportCSV()">导出当前单词库</button>
-            <button class="outline" onclick="exportLearningData()">💾 导出学习记录</button>
-            <button class="outline" onclick="document.getElementById('learningDataInput').click()">📥 导入学习记录</button>
-            <input type="file" id="learningDataInput" accept=".json" onchange="importLearningData(event)" style="display: none;">
             <button class="outline" onclick="syncToCloud()">🔄 立即同步</button>
-            <button class="outline" onclick="forgetFileHandle()">忘记自动导入文件</button>
             <button class="outline" onclick="resetMastered()">重置学习进度</button>
           </div>
-          
-          <p style="margin: 12px 0 0 0; color: var(--text-secondary); font-size: 0.9rem;">
-            💡 导入新单词库不会覆盖原有学习记录（只要单词拼写一致）
-          </p>
-          <p style="margin: 4px 0 0 0; color: var(--text-secondary); font-size: 0.9rem;">
-            CSV格式：No,words,transliteration,chinese,example sentence（UTF-8编码）
-          </p>
+          <div class="backup-list" id="backupList">
+            <div class="empty">请先登录账号使用云端备份</div>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- 进度条 -->
-    <div class="progress-bar">
-      <div class="progress" id="progress"></div>
-    </div>
+    <div class="progress-bar"><div class="progress" id="progress"></div></div>
     <p id="progressText">0%</p>
-
-    <!-- 统计卡片（可点击切换学习列表） -->
     <div class="stats">
       <div class="stat-box" id="unmasteredStat" onclick="switchToList('unmastered')">
         <h3>未学单词</h3>
@@ -853,22 +270,15 @@ input:focus {
     </div>
   </div>
 
-  <!-- 单词学习区域 -->
   <div class="card">
     <div class="learning-list-title">
       <h2 id="currentListTitle">📚 未学单词</h2>
-      <button class="outline" id="returnBtn" style="display: none;" onclick="switchToList('unmastered')">
-        ← 返回未学单词
-      </button>
+      <button class="outline" id="returnBtn" style="display:none;" onclick="switchToList('unmastered')">← 返回未学单词</button>
     </div>
-    
     <input id="searchInput" placeholder="🔍 搜索单词...">
-
-    <!-- 合并后的播放控制区域（同一行显示） -->
     <div class="playback-controls">
       <button class="outline" onclick="shuffleWords()">🔀 打乱顺序</button>
       <button class="outline" onclick="toggleAutoPlay()" id="autoBtn">▶️ 自动播放</button>
-      
       <div class="interval-setting">
         <label for="intervalInput">自动播放间隔：</label>
         <input type="number" id="intervalInput" min="1" max="30" value="4" step="0.5">
@@ -876,29 +286,23 @@ input:focus {
         <button class="outline" onclick="updateInterval()">应用</button>
       </div>
     </div>
-
     <div class="word-card" onclick="toggleReveal()">
       <div id="indexText">1 / 1</div>
       <div class="word" id="word">bill</div>
       <div class="transliteration" id="transliteration">/bɪl/</div>
-      
       <button class="primary" onclick="speakWord(event)">🔊 发音</button>
-      
       <div id="hint">点击卡片查看释义和例句</div>
-
       <div id="details" style="display:none">
         <div class="info-box">
           <h3>中文释义</h3>
           <div id="chinese"></div>
         </div>
-
         <div class="info-box">
           <h3>例句</h3>
           <div id="example"></div>
         </div>
       </div>
     </div>
-
     <div class="controls">
       <button class="primary" onclick="markKnown()">✅ 认识</button>
       <button class="secondary" onclick="markUnknown()">❌ 不熟</button>
@@ -907,109 +311,67 @@ input:focus {
       <button class="outline" onclick="nextWord()">➡️ 下一个</button>
     </div>
   </div>
-
 </div>
 
-<!-- 页脚版权信息 -->
-<footer class="footer">
-  <p>© 2026 版权所有 yanghao | 邮箱：<a href="mailto:yimoorua@163.com">yimoorua@163.com</a></p>
-</footer>
+<!-- 登录/注册/密码重置模态框 -->
+<div class="modal-overlay" id="loginModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="loginModalTitle">欢迎使用单词记忆系统，请登录账号</h2>
+    </div>
+    <form id="loginForm" onsubmit="handleLoginSubmit(event)">
+      <div class="form-group">
+        <label for="emailInput">邮箱地址</label>
+        <input type="email" id="emailInput" required placeholder="请输入邮箱">
+      </div>
+      <div class="form-group" id="passwordGroup">
+        <label for="passwordInput">密码（至少6位）</label>
+        <input type="password" id="passwordInput" required placeholder="请输入密码">
+        <div class="forgot-password">
+          <a onclick="showPasswordResetForm()">忘记密码？</a>
+        </div>
+      </div>
+      <button type="submit" class="primary" style="width:100%;margin-top:10px;" id="loginSubmitBtn">登录</button>
+      <div class="form-footer" id="loginFormSwitch">
+        没有账号？<a onclick="switchToRegister()">立即注册</a>
+      </div>
+    </form>
+  </div>
+</div>
 
-<!-- 每日学习折线图模态框 -->
+<!-- 新建备份名称模态框 -->
+<div class="modal-overlay" id="createBackupModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>新建云端备份</h2>
+      <button class="modal-close" onclick="closeModal('createBackupModal')">&times;</button>
+    </div>
+    <form id="createBackupForm" onsubmit="handleCreateBackup(event)">
+      <div class="form-group">
+        <label for="backupNameInput">备份名称</label>
+        <input type="text" id="backupNameInput" required placeholder="请输入备份名称">
+      </div>
+      <div style="display:flex;gap:10px;margin-top:20px;">
+        <button type="button" class="outline" style="flex:1;" onclick="closeModal('createBackupModal')">取消</button>
+        <button type="submit" class="primary" style="flex:1;" id="createBackupSubmitBtn">确定</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- 每日统计图表模态框 -->
 <div class="modal-overlay" id="dailyChartModal">
   <div class="modal">
     <div class="modal-header">
       <h2>📈 每日学习统计</h2>
       <button class="modal-close" onclick="closeModal('dailyChartModal')">&times;</button>
     </div>
-    <div class="chart-container">
-      <canvas id="dailyChart"></canvas>
-    </div>
-    <div style="text-align: center; margin-top: 20px; color: var(--text-secondary);">
-      <p>总学习天数：<span id="totalDays">0</span> 天</p>
-      <p>累计学习单词：<span id="totalLearned">0</span> 个</p>
-      <p>日均学习：<span id="avgDaily">0</span> 个/天</p>
-    </div>
+    <div class="chart-container"><canvas id="dailyChart"></canvas></div>
   </div>
 </div>
 
 <script>
-// ==================== 主题切换功能 ====================
-function toggleTheme() {
-  const body = document.body;
-  const themeToggle = document.getElementById('themeToggle');
-  
-  body.classList.toggle('dark-theme');
-  
-  if(body.classList.contains('dark-theme')) {
-    themeToggle.textContent = '☀️';
-    localStorage.setItem('theme', 'dark');
-    // 更新图表主题
-    updateChartTheme();
-  } else {
-    themeToggle.textContent = '🌙';
-    localStorage.setItem('theme', 'light');
-    // 更新图表主题
-    updateChartTheme();
-  }
-}
-
-// 初始化主题
-function initTheme() {
-  const savedTheme = localStorage.getItem('theme');
-  const themeToggle = document.getElementById('themeToggle');
-  
-  if(savedTheme === 'dark') {
-    document.body.classList.add('dark-theme');
-    themeToggle.textContent = '☀️';
-  } else {
-    document.body.classList.remove('dark-theme');
-    themeToggle.textContent = '🌙';
-  }
-}
-
-// 更新图表主题
-function updateChartTheme() {
-  if(dailyChart) {
-    const isDark = document.body.classList.contains('dark-theme');
-    
-    // 更新网格线颜色
-    dailyChart.options.scales.y.grid.color = isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)';
-    
-    // 更新文字颜色
-    dailyChart.options.scales.y.ticks.color = isDark ? '#a1a1aa' : '#64748b';
-    dailyChart.options.scales.x.ticks.color = isDark ? '#a1a1aa' : '#64748b';
-    
-    // 更新提示框背景
-    dailyChart.options.plugins.tooltip.backgroundColor = isDark ? '#27272a' : 'rgba(255, 255, 255, 0.9)';
-    dailyChart.options.plugins.tooltip.titleColor = isDark ? '#fafafa' : '#0f172a';
-    dailyChart.options.plugins.tooltip.bodyColor = isDark ? '#a1a1aa' : '#64748b';
-    
-    dailyChart.update();
-  }
-}
-
-// ==================== 自动折叠功能 ====================
-function setupAutoCollapse() {
-  // 获取所有按钮
-  const allButtons = document.querySelectorAll('button');
-  const wordLibraryManager = document.getElementById('wordLibraryManager');
-  
-  allButtons.forEach(button => {
-    // 排除单词库管理模块内部的按钮
-    if(!wordLibraryManager.contains(button)) {
-      button.addEventListener('click', () => {
-        // 如果模块是展开的，就折叠它
-        if(!wordLibraryManager.classList.contains('collapsed')) {
-          toggleCollapsible('wordLibraryManager');
-        }
-      });
-    }
-  });
-}
-
-// ==================== Firebase 云端同步配置 ====================
-// 请替换为您自己的Firebase真实配置信息
+// ========== 请替换为你自己的 Firebase 配置 ==========
 const firebaseConfig = {
   apiKey: "AIzaSyA101QAIovjn3AZKwXVQbm1CWEljTsHQLc",
   authDomain: "topic-words.firebaseapp.com",
@@ -1020,711 +382,681 @@ const firebaseConfig = {
   appId: "1:375241220207:web:044675f042d731ac6aad9a"
 };
 
-// 全局声明Firebase实例（修复作用域问题）
-let auth = null;
-let database = null;
+let firebaseApp, auth, database;
 let cloudSyncEnabled = false;
 let userId = null;
+let userEmail = null;
 let syncTimeout = null;
+let backupList = [];
+let dailyChart = null;
+let isRegisterMode = false;
+let isPasswordResetMode = false;
 
-// 初始化Firebase（仅在http/https协议下）
+// 日期工具函数
+function getSafeDateKey(date = new Date()) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+function formatDisplayTime(timestamp) {
+  if (!timestamp) return "";
+  return new Date(timestamp).toLocaleString('zh-CN');
+}
+
+// 折叠面板切换
+function toggleCollapsible(id) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.toggle("collapsed");
+  localStorage.setItem(`collapsible_${id}`, el.classList.contains("collapsed"));
+}
+
+// 主题切换
+function toggleTheme() {
+  const b = document.body;
+  const t = document.getElementById("themeToggle");
+  b.classList.toggle("dark-theme");
+  if (b.classList.contains("dark-theme")) {
+    t.textContent = "☀️";
+    localStorage.setItem("theme", "dark");
+  } else {
+    t.textContent = "🌙";
+    localStorage.setItem("theme", "light");
+  }
+  updateChartTheme();
+}
+
+function initTheme() {
+  const s = localStorage.getItem("theme");
+  const t = document.getElementById("themeToggle");
+  if (s === "dark") {
+    document.body.classList.add("dark-theme");
+    t.textContent = "☀️";
+  } else {
+    document.body.classList.remove("dark-theme");
+    t.textContent = "🌙";
+  }
+}
+
+function updateChartTheme() {
+  if (!dailyChart) return;
+  const d = document.body.classList.contains("dark-theme");
+  dailyChart.options.scales.y.grid.color = d ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.05)";
+  dailyChart.options.scales.y.ticks.color = d ? "#a1a1aa" : "#64748b";
+  dailyChart.options.scales.x.ticks.color = d ? "#a1a1aa" : "#64748b";
+  dailyChart.update();
+}
+
+function initCollapsibleState() {
+  document.querySelectorAll(".collapsible").forEach(el => {
+    const id = el.id;
+    const c = localStorage.getItem(`collapsible_${id}`) === "true";
+    if (c) el.classList.add("collapsed");
+  });
+}
+
+function updateSyncStatus(status, text) {
+  const e = document.getElementById("syncStatus");
+  const t = document.getElementById("syncStatusText");
+  if (!e || !t) return;
+  e.className = `sync-status ${status}`;
+  const map = {
+    syncing: "正在同步...",
+    synced: "已同步到云端",
+    error: "同步失败",
+    local: "本地模式（请登录账号）"
+  };
+  t.textContent = text || map[status] || "正在连接云端...";
+}
+
+function updateUserStatus() {
+  const statusEl = document.getElementById("userStatus");
+  const emailEl = document.getElementById("userEmail");
+  
+  if (userId && userEmail) {
+    statusEl.style.display = "flex";
+    emailEl.textContent = userEmail;
+  } else {
+    statusEl.style.display = "none";
+  }
+}
+
+// Firebase 初始化
 if (window.location.protocol !== 'file:') {
   try {
-    firebase.initializeApp(firebaseConfig);
+    firebaseApp = firebase.initializeApp(firebaseConfig);
     auth = firebase.auth();
     database = firebase.database();
     cloudSyncEnabled = true;
-    console.log("Firebase初始化成功");
-  } catch (error) {
-    console.error("Firebase初始化失败:", error);
-    cloudSyncEnabled = false;
-    auth = null;
-    database = null;
-  }
-}
-
-// 更新同步状态显示
-function updateSyncStatus(status, text) {
-  const statusEl = document.getElementById('syncStatus');
-  const textEl = document.getElementById('syncStatusText');
-  
-  if (!statusEl || !textEl) return;
-  
-  statusEl.className = `sync-status ${status}`;
-  
-  switch(status) {
-    case 'syncing':
-      textEl.textContent = text || '正在同步...';
-      break;
-    case 'synced':
-      textEl.textContent = text || '已同步到云端';
-      break;
-    case 'error':
-      textEl.textContent = text || '同步失败';
-      break;
-    case 'local':
-      textEl.textContent = text || '本地模式（请用http://打开以启用云端同步）';
-      break;
-    default:
-      textEl.textContent = text || '正在连接云端...';
-  }
-}
-
-// 匿名登录Firebase
-function signInAnonymously() {
-  if (!cloudSyncEnabled || !auth || window.location.protocol === 'file:') {
-    updateSyncStatus('local');
-    return;
-  }
-
-  auth.signInAnonymously()
-    .then((userCredential) => {
-      userId = userCredential.user.uid;
-      console.log("匿名登录成功，用户ID:", userId);
-      updateSyncStatus('synced', '已连接云端');
-      
-      // 登录成功后从云端拉取数据
-      pullFromCloud();
-    })
-    .catch((error) => {
-      console.error("Firebase匿名登录失败:", error);
-      cloudSyncEnabled = false;
-      updateSyncStatus('error', '云端连接失败，使用本地模式');
-    });
-}
-
-// 将学习数据推送到云端（防抖3秒）
-function syncToCloud() {
-  if(!cloudSyncEnabled || !userId || !database || window.location.protocol === 'file:') return;
-  
-  // 清除之前的同步定时器
-  clearTimeout(syncTimeout);
-  
-  // 设置3秒防抖，避免频繁同步
-  syncTimeout = setTimeout(() => {
-    updateSyncStatus('syncing');
     
-    const learningData = {
+    // 监听用户登录状态变化
+    auth.onAuthStateChanged(user => {
+      if (user) {
+        userId = user.uid;
+        userEmail = user.email;
+        updateUserStatus();
+        updateSyncStatus("synced", "已登录并连接云端");
+        pullFromCloud();
+        setTimeout(refreshBackupList, 1200);
+        
+        // 登录成功后显示主内容，隐藏登录模态框
+        document.getElementById("mainContent").classList.add("visible");
+        closeModal("loginModal");
+      } else {
+        userId = null;
+        userEmail = null;
+        updateUserStatus();
+        updateSyncStatus("local");
+        
+        // 未登录时隐藏主内容，显示登录模态框
+        document.getElementById("mainContent").classList.remove("visible");
+        showLoginModal();
+      }
+    });
+  } catch (e) {
+    console.error("Firebase初始化失败", e);
+    cloudSyncEnabled = false;
+    updateSyncStatus("error", "云端连接失败，本地模式");
+  }
+}
+
+// 登录/注册/密码重置相关函数
+function showLoginModal() {
+  isRegisterMode = false;
+  isPasswordResetMode = false;
+  document.getElementById("loginModalTitle").textContent = "登录账号";
+  document.getElementById("loginSubmitBtn").textContent = "登录";
+  document.getElementById("passwordGroup").style.display = "block";
+  document.getElementById("passwordInput").required = true; // 恢复必填
+  document.getElementById("loginFormSwitch").innerHTML = '没有账号？<a onclick="switchToRegister()">立即注册</a>';
+  document.getElementById("emailInput").value = "";
+  document.getElementById("passwordInput").value = "";
+  showModal("loginModal");
+}
+
+function switchToRegister() {
+  isRegisterMode = true;
+  isPasswordResetMode = false;
+  document.getElementById("loginModalTitle").textContent = "注册账号";
+  document.getElementById("loginSubmitBtn").textContent = "注册";
+  document.getElementById("passwordGroup").style.display = "block";
+  document.getElementById("passwordInput").required = true; // 恢复必填
+  document.getElementById("loginFormSwitch").innerHTML = '已有账号？<a onclick="switchToLogin()">立即登录</a>';
+}
+
+function switchToLogin() {
+  isRegisterMode = false;
+  isPasswordResetMode = false;
+  document.getElementById("loginModalTitle").textContent = "登录账号";
+  document.getElementById("loginSubmitBtn").textContent = "登录";
+  document.getElementById("passwordGroup").style.display = "block";
+  document.getElementById("passwordInput").required = true; // 恢复必填
+  document.getElementById("loginFormSwitch").innerHTML = '没有账号？<a onclick="switchToRegister()">立即注册</a>';
+}
+
+function showPasswordResetForm() {
+  isPasswordResetMode = true;
+  isRegisterMode = false;
+  document.getElementById("loginModalTitle").textContent = "重置密码";
+  document.getElementById("loginSubmitBtn").textContent = "发送重置链接";
+  document.getElementById("passwordGroup").style.display = "none";
+  document.getElementById("passwordInput").required = false; // 移除必填，解决报错
+  document.getElementById("loginFormSwitch").innerHTML = '记得密码？<a onclick="switchToLogin()">返回登录</a>';
+}
+
+async function handleLoginSubmit(event) {
+  event.preventDefault();
+  const email = document.getElementById("emailInput").value.trim();
+  const password = document.getElementById("passwordInput").value;
+  const submitBtn = document.getElementById("loginSubmitBtn");
+  
+  submitBtn.disabled = true;
+  
+  try {
+    if (isPasswordResetMode) {
+      // 发送密码重置邮件
+      submitBtn.textContent = "发送中...";
+      await auth.sendPasswordResetEmail(email);
+      showAutoImportStatus("✅ 密码重置链接已发送到您的邮箱", "success");
+      switchToLogin();
+    } else if (isRegisterMode) {
+      // 注册新用户
+      submitBtn.textContent = "注册中...";
+      await auth.createUserWithEmailAndPassword(email, password);
+      showAutoImportStatus("✅ 账号注册成功，已自动登录", "success");
+    } else {
+      // 登录已有用户
+      submitBtn.textContent = "登录中...";
+      await auth.signInWithEmailAndPassword(email, password);
+      showAutoImportStatus("✅ 登录成功", "success");
+    }
+  } catch (error) {
+    let errorMessage = "操作失败";
+    switch (error.code) {
+      case "auth/email-already-in-use":
+        errorMessage = "该邮箱已被注册，请直接登录";
+        break;
+      case "auth/invalid-email":
+        errorMessage = "邮箱格式不正确";
+        break;
+      case "auth/user-not-found":
+        errorMessage = "该账号不存在，请先注册";
+        break;
+      case "auth/wrong-password":
+        errorMessage = "密码错误";
+        break;
+      case "auth/weak-password":
+        errorMessage = "密码太弱，至少需要6位";
+        break;
+      case "auth/network-request-failed":
+        errorMessage = "网络错误，请检查网络连接";
+        break;
+      case "auth/user-disabled":
+        errorMessage = "该账号已被禁用";
+        break;
+      case "auth/too-many-requests":
+        errorMessage = "操作过于频繁，请稍后再试";
+        break;
+    }
+    showAutoImportStatus("❌ " + errorMessage, "error");
+    submitBtn.disabled = false;
+    submitBtn.textContent = isPasswordResetMode ? "发送重置链接" : (isRegisterMode ? "注册" : "登录");
+  }
+}
+
+async function signOut() {
+  if (!confirm("确定要登出吗？登出后将无法使用云端功能。")) return;
+  try {
+    await auth.signOut();
+    // 清空本地数据
+    localStorage.clear();
+    location.reload(); // 刷新页面重置状态
+  } catch (error) {
+    showAutoImportStatus("❌ 登出失败：" + error.message, "error");
+  }
+}
+
+function syncToCloud() {
+  if (!cloudSyncEnabled || !userId || window.location.protocol === "file:") return;
+  clearTimeout(syncTimeout);
+  syncTimeout = setTimeout(() => {
+    updateSyncStatus("syncing");
+    const d = {
       version: "1.0",
       lastSync: firebase.database.ServerValue.TIMESTAMP,
-      mastered: mastered,
-      favorites: favorites,
-      wrongWords: wrongWords,
-      dailyData: dailyData
+      mastered,
+      favorites,
+      wrongWords,
+      dailyData
     };
-    
-    database.ref(`users/${userId}/learningData`).set(learningData)
-      .then(() => {
-        updateSyncStatus('synced');
-      })
-      .catch((error) => {
-        console.error("云端同步失败:", error);
-        updateSyncStatus('error', '同步失败，将在下次操作时重试');
+    database.ref(`users/${userId}/learningData`).set(d)
+      .then(() => updateSyncStatus("synced"))
+      .catch(e => {
+        console.error("同步失败", e);
+        updateSyncStatus("error", "同步失败");
       });
   }, 3000);
 }
 
-// 从云端拉取学习数据
 function pullFromCloud() {
-  if(!cloudSyncEnabled || !userId || !database || window.location.protocol === 'file:') return;
-  
-  updateSyncStatus('syncing', '正在从云端同步数据...');
-  
-  database.ref(`users/${userId}/learningData`).once('value')
-    .then((snapshot) => {
-      if(snapshot.exists()) {
-        const cloudData = snapshot.val();
-        
-        // 比较本地和云端数据的最后同步时间，以最新的为准
-        const localLastSync = parseInt(localStorage.getItem("lastSync") || "0");
-        const cloudLastSync = cloudData.lastSync || 0;
-        
-        if(cloudLastSync > localLastSync) {
-          // 云端数据更新，合并到本地
-          mastered = cloudData.mastered || {};
-          favorites = cloudData.favorites || [];
-          wrongWords = cloudData.wrongWords || [];
-          dailyData = cloudData.dailyData || {};
-          
-          // 确保今日数据存在
-          if(!dailyData[todayKey]){
-            dailyData[todayKey] = 0;
-          }
-          
-          // 保存到本地存储
-          saveData(false); // 不触发云端同步
-          switchToList(currentList);
-          
-          updateSyncStatus('synced', '已从云端同步最新数据');
-        } else {
-          // 本地数据更新，推送到云端
-          syncToCloud();
-          updateSyncStatus('synced');
-        }
-      } else {
-        // 云端没有数据，将本地数据推送到云端
-        syncToCloud();
-        updateSyncStatus('synced');
+  if (!cloudSyncEnabled || !userId || window.location.protocol === "file:") return;
+  updateSyncStatus("syncing", "拉取云端数据...");
+  database.ref(`users/${userId}/learningData`).once("value").then(s => {
+    if (s.exists()) {
+      const c = s.val();
+      const l = parseInt(localStorage.getItem("lastSync") || "0");
+      const ct = c.lastSync || 0;
+      if (ct > l) {
+        mastered = c.mastered || {};
+        favorites = c.favorites || [];
+        wrongWords = c.wrongWords || [];
+        dailyData = c.dailyData || {};
+        saveData(false);
+        switchToList(currentList);
       }
-    })
-    .catch((error) => {
-      console.error("从云端拉取数据失败:", error);
-      updateSyncStatus('error', '拉取云端数据失败，使用本地数据');
-    });
+    }
+    updateSyncStatus("synced");
+  }).catch(e => {
+    updateSyncStatus("error", "拉取云端失败");
+  });
 }
 
-// 核心数据结构
-let wordDatabase = JSON.parse(localStorage.getItem("wordDatabase") || '{}');
-let words = Object.keys(wordDatabase).length > 0 ? Object.keys(wordDatabase) : [
-  "bill","charge","strategy","comply","negotiate"
-];
+// 新建备份相关函数
+function showCreateBackupModal() {
+  if (!cloudSyncEnabled || !userId) {
+    alert("请先登录账号");
+    return;
+  }
+  // 自动填充默认名称
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const hour = String(d.getHours()).padStart(2, '0');
+  const min = String(d.getMinutes()).padStart(2, '0');
+  document.getElementById("backupNameInput").value = `备份_${year}-${month}-${day}_${hour}-${min}`;
+  showModal("createBackupModal");
+}
 
-// 默认单词库
+async function handleCreateBackup(event) {
+  event.preventDefault();
+  const backupName = document.getElementById("backupNameInput").value.trim();
+  const submitBtn = document.getElementById("createBackupSubmitBtn");
+  
+  if (!backupName) {
+    alert("请输入备份名称");
+    return;
+  }
+  
+  submitBtn.disabled = true;
+  submitBtn.textContent = "创建中...";
+  
+  try {
+    const ts = Date.now();
+    const data = {
+      backupName: backupName,
+      timestamp: ts,
+      wordDatabase: JSON.parse(JSON.stringify(wordDatabase)),
+      mastered: JSON.parse(JSON.stringify(mastered)),
+      favorites: JSON.parse(JSON.stringify(favorites)),
+      wrongWords: JSON.parse(JSON.stringify(wrongWords)),
+      dailyData: JSON.parse(JSON.stringify(dailyData))
+    };
+    await database.ref(`users/${userId}/backups`).push(data);
+    showAutoImportStatus("✅ 云端备份创建成功", "success");
+    closeModal("createBackupModal");
+    refreshBackupList();
+  } catch (e) {
+    alert("备份上传失败：" + e.message);
+  } finally {
+    submitBtn.disabled = false;
+    submitBtn.textContent = "确定";
+  }
+}
+
+// 单词核心数据
+let wordDatabase = JSON.parse(localStorage.getItem("wordDatabase") || "{}");
+let words = Object.keys(wordDatabase).length > 0 ? Object.keys(wordDatabase) : ["bill", "charge", "strategy", "comply", "negotiate"];
 const defaultWordInfo = {
-  bill:{transliteration:"/bɪl/", chinese:"账单；法案", example:"Please pay the bill before leaving."},
-  charge:{transliteration:"/tʃɑːrdʒ/", chinese:"收费；充电；指控", example:"The company will charge extra for delivery."},
-  strategy:{transliteration:"/ˈstrætədʒi/", chinese:"策略；战略", example:"We need a better strategy to win the market."},
-  comply:{transliteration:"/kəmˈplaɪ/", chinese:"遵守", example:"All employees must comply with company safety rules."},
-  negotiate:{transliteration:"/nɪˈɡəʊʃieɪt/", chinese:"谈判；协商", example:"They negotiated a 10% discount on the bulk order."}
+  bill: { transliteration: "/bɪl/", chinese: "账单；法案", example: "Please pay the bill before leaving." },
+  charge: { transliteration: "/tʃɑːrdʒ/", chinese: "收费；充电；指控", example: "The company will charge extra for delivery." },
+  strategy: { transliteration: "/ˈstrætədʒi/", chinese: "策略；战略", example: "We need a better strategy." },
+  comply: { transliteration: "/kəmˈplaɪ/", chinese: "遵守", example: "All must comply with rules." },
+  negotiate: { transliteration: "/nɪˈɡəʊʃieɪt/", chinese: "谈判；协商", example: "They negotiated a discount." }
 };
-
 wordDatabase = Object.assign({}, defaultWordInfo, wordDatabase);
 
-// 学习列表状态
-let currentList = 'unmastered'; // 当前显示的列表：unmastered, favorites, wrongWords
-let deck = []; // 当前学习队列
-let index = 0;
-let reveal = false;
-let autoPlay = false;
-let timer = null;
-let dailyChart = null; // 每日学习折线图实例
-let autoPlayInterval = 4000; // 默认自动播放间隔4秒
-let isImporting = false; // 导入锁，防止同时执行多个导入操作
-
-// 用户数据（学习记录）
+let currentList = "unmastered", deck = [], index = 0, reveal = false, autoPlay = false, timer = null;
+let autoPlayInterval = 4000, isImporting = false;
 let favorites = JSON.parse(localStorage.getItem("favorites") || "[]");
 let wrongWords = JSON.parse(localStorage.getItem("wrongWords") || "[]");
 let mastered = JSON.parse(localStorage.getItem("mastered") || "{}");
 let dailyData = JSON.parse(localStorage.getItem("dailyData") || "{}");
 
-const todayKey = new Date().toLocaleDateString();
-if(!dailyData[todayKey]){
-  dailyData[todayKey] = 0;
-}
+// 使用安全日期格式
+const todayKey = getSafeDateKey();
+if (!dailyData[todayKey]) dailyData[todayKey] = 0;
 
-// 保存所有数据到本地存储（可选是否同步到云端）
-function saveData(syncToCloudFlag = true){
+function saveData(sync = true) {
   localStorage.setItem("wordDatabase", JSON.stringify(wordDatabase));
   localStorage.setItem("favorites", JSON.stringify(favorites));
   localStorage.setItem("wrongWords", JSON.stringify(wrongWords));
   localStorage.setItem("mastered", JSON.stringify(mastered));
   localStorage.setItem("dailyData", JSON.stringify(dailyData));
   localStorage.setItem("lastSync", Date.now().toString());
-  
-  // 如果启用了云端同步，自动同步到云端
-  if(syncToCloudFlag && cloudSyncEnabled && window.location.protocol !== 'file:') {
-    syncToCloud();
+  if (sync && cloudSyncEnabled && userId && window.location.protocol !== "file:") syncToCloud();
+}
+
+// 背诵核心函数
+function toggleReveal() {
+  reveal = !reveal;
+  updateUI();
+}
+
+function speakWord(e) {
+  if (e) e.stopPropagation();
+  const w = currentWord();
+  if (w === "该列表暂无未学单词" || w === "无匹配结果") return;
+  if (!("speechSynthesis" in window)) return;
+  try {
+    const u = new SpeechSynthesisUtterance(w);
+    u.lang = "en-US";
+    u.rate = 0.9;
+    speechSynthesis.cancel();
+    speechSynthesis.speak(u);
+  } catch (err) { }
+}
+
+function currentWord() { return deck[index] || ""; }
+
+function updateUI() {
+  const w = currentWord();
+  document.getElementById("word").innerText = w;
+  document.getElementById("indexText").innerText = `${index + 1} / ${deck.length}`;
+  const info = wordDatabase[w] || { transliteration: "暂无音标", chinese: "暂无释义", example: "No example" };
+  document.getElementById("transliteration").innerText = info.transliteration;
+  document.getElementById("chinese").innerText = info.chinese;
+  document.getElementById("example").innerText = info.example;
+  document.getElementById("details").style.display = reveal ? "block" : "none";
+
+  const un = words.filter(x => !mastered[x]).length;
+  const fav = favorites.filter(x => !mastered[x]).length;
+  const wr = wrongWords.filter(x => !mastered[x]).length;
+  document.getElementById("unmasteredCount").innerText = un;
+  document.getElementById("favoriteCount").innerText = fav;
+  document.getElementById("wrongCount").innerText = wr;
+  document.getElementById("dailyCount").innerText = dailyData[todayKey];
+  const prog = Math.round(Object.keys(mastered).length / words.length * 100);
+  document.getElementById("progressText").innerText = `${prog}%`;
+  document.getElementById("progress").style.width = `${prog}%`;
+  saveData(false);
+}
+
+function switchToList(type) {
+  if (autoPlay) toggleAutoPlay();
+  currentList = type;
+  index = 0;
+  reveal = false;
+  switch (type) {
+    case "unmastered":
+      deck = words.filter(w => !mastered[w]);
+      document.getElementById("currentListTitle").textContent = "📚 未学单词";
+      document.getElementById("returnBtn").style.display = "none";
+      break;
+    case "favorites":
+      deck = favorites.filter(w => !mastered[w]);
+      document.getElementById("currentListTitle").textContent = "⭐ 收藏单词";
+      document.getElementById("returnBtn").style.display = "inline-flex";
+      break;
+    case "wrongWords":
+      deck = wrongWords.filter(w => !mastered[w]);
+      document.getElementById("currentListTitle").textContent = "❌ 错题单词";
+      document.getElementById("returnBtn").style.display = "inline-flex";
+      break;
   }
+  if (deck.length === 0) deck = ["该列表暂无未学单词"];
+  updateUI();
 }
 
-// ==================== 学习记录导出/导入功能 ====================
-// 导出学习记录为JSON文件
-function exportLearningData() {
-  const learningData = {
-    version: "1.0",
-    exportDate: new Date().toISOString(),
-    mastered: mastered,
-    favorites: favorites,
-    wrongWords: wrongWords,
-    dailyData: dailyData
-  };
-  
-  const jsonContent = JSON.stringify(learningData, null, 2);
-  const blob = new Blob([jsonContent], { type: 'application/json;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.setAttribute('href', url);
-  link.setAttribute('download', `toeic_learning_data_${new Date().getTime()}.json`);
-  link.style.visibility = 'hidden';
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-  
-  showAutoImportStatus("✅ 学习记录已成功导出，请妥善保存文件", "success");
+function nextWord() {
+  reveal = false;
+  index = (index + 1) % deck.length;
+  updateUI();
+  setTimeout(speakWord, 100);
 }
 
-// 导入学习记录
-function importLearningData(event) {
-  const file = event.target.files[0];
-  if(!file) return;
-  
-  // 清空文件输入，允许重复选择同一个文件
-  event.target.value = '';
-  
-  if(!confirm("⚠️ 确定要导入学习记录吗？\n\n这将覆盖当前所有学习进度、收藏和错题本！\n建议先导出当前记录备份。")) {
+function prevWord() {
+  reveal = false;
+  index = (index - 1 + deck.length) % deck.length;
+  updateUI();
+  setTimeout(speakWord, 100);
+}
+
+// 点击认识后自动发音
+function markKnown() {
+  const w = currentWord();
+  if (w === "该列表暂无未学单词") return;
+  mastered[w] = true;
+  dailyData[todayKey]++;
+  deck.splice(index, 1);
+  if (deck.length === 0) deck = ["该列表暂无未学单词"], index = 0;
+  else index = index % deck.length;
+  updateUI();
+  setTimeout(speakWord, 100); // 自动发音
+}
+
+function markUnknown() {
+  const w = currentWord();
+  if (w === "该列表暂无未学单词") return;
+  if (!wrongWords.includes(w)) wrongWords.unshift(w);
+  dailyData[todayKey]++;
+  nextWord();
+}
+
+function toggleFavorite() {
+  const w = currentWord();
+  if (w === "该列表暂无未学单词") return;
+  favorites.includes(w)
+    ? favorites = favorites.filter(x => x !== w)
+    : favorites.unshift(w);
+  updateUI();
+}
+
+function shuffleWords() {
+  if (deck.length <= 1 || deck[0] === "该列表暂无未学单词") return;
+  for (let i = deck.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [deck[i], deck[j]] = [deck[j], deck[i]];
+  }
+  index = 0;
+  updateUI();
+  setTimeout(speakWord, 100);
+}
+
+function toggleAutoPlay() {
+  if (deck[0] === "该列表暂无未学单词") {
+    alert("当前列表暂无单词可播放");
     return;
   }
-  
-  const reader = new FileReader();
-  reader.onload = function(e) {
-    try {
-      const learningData = JSON.parse(e.target.result);
-      
-      // 验证数据格式
-      if(!learningData.version || !learningData.mastered || !learningData.favorites || !learningData.wrongWords || !learningData.dailyData) {
-        alert("❌ 学习记录文件格式错误\n请确保是本系统导出的JSON文件");
-        return;
-      }
-      
-      // 覆盖当前学习数据
-      mastered = learningData.mastered;
-      favorites = learningData.favorites;
-      wrongWords = learningData.wrongWords;
-      dailyData = learningData.dailyData;
-      
-      // 确保今日数据存在
-      if(!dailyData[todayKey]){
-        dailyData[todayKey] = 0;
-      }
-      
-      // 保存数据并刷新UI
-      saveData();
-      switchToList(currentList);
-      
-      showAutoImportStatus("✅ 学习记录已成功导入并同步到云端", "success");
-    } catch (error) {
-      alert("❌ 学习记录解析失败\n请检查文件是否损坏或格式正确");
-      console.error("学习记录导入错误:", error);
-    }
-  };
-  
-  reader.onerror = function() {
-    alert("❌ 文件读取失败");
-  };
-  
-  reader.readAsText(file, 'UTF-8');
-}
-
-// 可折叠区域控制
-function toggleCollapsible(id) {
-  const element = document.getElementById(id);
-  if (!element) return;
-  
-  element.classList.toggle('collapsed');
-  
-  // 保存折叠状态到本地存储
-  localStorage.setItem(`collapsible_${id}`, element.classList.contains('collapsed'));
-}
-
-// 初始化折叠状态
-function initCollapsibleState() {
-  const collapsibles = document.querySelectorAll('.collapsible');
-  collapsibles.forEach(element => {
-    const id = element.id;
-    const isCollapsed = localStorage.getItem(`collapsible_${id}`) === 'true';
-    if(isCollapsed) {
-      element.classList.add('collapsed');
-    }
-  });
-}
-
-// 5列CSV解析函数（支持带逗号的字段）
-function parseCSV(csvText) {
-  const lines = csvText.split('\n').filter(line => line.trim());
-  const result = {};
-  
-  // 跳过空文件
-  if(lines.length === 0) {
-    return result;
+  autoPlay = !autoPlay;
+  const btn = document.getElementById("autoBtn");
+  if (autoPlay) {
+    btn.innerText = "⏸️ 暂停";
+    setTimeout(speakWord, 100);
+    timer = setInterval(nextWord, autoPlayInterval);
+  } else {
+    btn.innerText = "▶️ 自动播放";
+    clearInterval(timer);
   }
-  
-  // 从第二行开始解析（跳过表头）
-  for(let i=1; i<lines.length; i++){
-    const parts = [];
-    let current = '';
-    let inQuotes = false;
-    
-    for(const char of lines[i]){
-      if(char === '"'){
-        inQuotes = !inQuotes;
-      }else if(char === ',' && !inQuotes){
-        parts.push(current.trim());
-        current = '';
-      }else{
-        current += char;
-      }
+}
+
+function updateInterval() {
+  const inp = document.getElementById("intervalInput");
+  const v = parseFloat(inp.value);
+  if (isNaN(v) || v < 1 || v > 30) {
+    alert("请输入1-30之间数字");
+    inp.value = autoPlayInterval / 1000;
+    return;
+  }
+  autoPlayInterval = v * 1000;
+  if (autoPlay) {
+    clearInterval(timer);
+    timer = setInterval(nextWord, autoPlayInterval);
+  }
+  alert(`已设置为 ${v} 秒`);
+}
+
+// CSV 导入导出
+function parseCSV(t) {
+  const l = t.split("\n").filter(x => x.trim());
+  const res = {};
+  if (l.length === 0) return res;
+  for (let i = 1; i < l.length; i++) {
+    let curr = "", inq = false, parts = [];
+    for (let c of l[i]) {
+      if (c === '"') inq = !inq;
+      else if (c === "," && !inq) {
+        parts.push(curr.trim());
+        curr = "";
+      } else curr += c;
     }
-    parts.push(current.trim());
-    
-    // 确保至少有单词列
-    if(parts.length >= 2 && parts[1]) {
-      const word = parts[1];
-      result[word] = {
+    parts.push(curr.trim());
+    if (parts.length >= 2 && parts[1]) {
+      const w = parts[1];
+      res[w] = {
         transliteration: parts[2] || "暂无音标",
         chinese: parts[3] || "暂无释义",
         example: parts[4] || "No example"
       };
     }
   }
-  
-  return result;
+  return res;
 }
 
-// 从文件内容导入单词库（不影响学习记录）
 function importFromFileContent(content, fileName) {
   try {
-    const parsedData = parseCSV(content);
-    
-    if(Object.keys(parsedData).length === 0) {
-      alert("❌ CSV文件为空或格式错误");
-      return false;
+    const p = parseCSV(content);
+    if (Object.keys(p).length === 0) { alert("CSV为空或格式错误"); return false; }
+    wordDatabase = p;
+    words = Object.keys(p);
+    switchToList("unmastered");
+    showAutoImportStatus(`✅ 导入 ${words.length} 个单词，已自动云端备份`, "success");
+    if (cloudSyncEnabled && userId) {
+      setTimeout(() => {
+        const backupName = `导入单词库_${fileName.replace(/[\/:*?"<>|]/g, "_")}`;
+        createNewBackup(backupName);
+      }, 600);
     }
-    
-    wordDatabase = parsedData;
-    words = Object.keys(parsedData);
-    // 导入后自动切换到未学单词列表
-    switchToList('unmastered');
-    showAutoImportStatus(`✅ 成功导入 ${words.length} 个单词（来自 ${fileName}）\n原有学习记录已保留并同步到云端`, "success");
     return true;
-  } catch (error) {
-    alert("❌ CSV解析失败，请检查格式");
-    console.error("CSV解析错误:", error);
-    return false;
-  }
+  } catch (e) { alert("CSV解析失败"); return false; }
 }
 
-// 手动选择文件导入单词库
-function importCSV(event) {
-  if(isImporting) return;
-  
-  const file = event.target.files[0];
-  if(!file) return;
-  
-  // 清空文件输入，允许重复选择同一个文件
-  event.target.value = '';
-  
-  readFile(file);
+function importCSV(e) {
+  if (isImporting) return;
+  const f = e.target.files[0]; if (!f) return;
+  e.target.value = ""; readFile(f);
 }
 
-// 读取文件内容
-function readFile(file) {
-  if(isImporting) return;
-  
+function readFile(f) {
+  if (isImporting) return;
   isImporting = true;
-  const reader = new FileReader();
-  
-  reader.onload = function(e) {
-    importFromFileContent(e.target.result, file.name);
+  const r = new FileReader();
+  r.onload = ev => {
+    importFromFileContent(ev.target.result, f.name);
     isImporting = false;
   };
-  
-  reader.onerror = function() {
-    alert("❌ 文件读取失败");
-    isImporting = false;
-  };
-  
-  reader.readAsText(file, 'UTF-8');
+  r.readAsText(f, "UTF-8");
 }
 
-// 导出CSV单词库
 function exportCSV() {
-  if(Object.keys(wordDatabase).length === 0) {
-    alert('暂无单词数据可导出！');
-    return;
+  if (Object.keys(wordDatabase).length === 0) { alert("暂无单词可导出"); return; }
+  let csv = "No,words,transliteration,chinese,example sentence\n";
+  let n = 1;
+  for (let w in wordDatabase) {
+    const info = wordDatabase[w];
+    csv += `${n},${w},${info.transliteration},${info.chinese},${info.example}\n`;
+    n++;
   }
-  let csvContent = "No,words,transliteration,chinese,example sentence\n";
-  let no = 1;
-  for(const [word, info] of Object.entries(wordDatabase)) {
-    const chinese = info.chinese.includes(',') ? `"${info.chinese}"` : info.chinese;
-    const example = info.example.includes(',') ? `"${info.example}"` : info.example;
-    csvContent += `${no},${word},${info.transliteration},${chinese},${example}\n`;
-    no++;
-  }
-  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-  const url = URL.createObjectURL(blob);
-  const link = document.createElement('a');
-  link.setAttribute('href', url);
-  link.setAttribute('download', `toeic_words_${new Date().getTime()}.csv`);
-  link.style.visibility = 'hidden';
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
+  const b = new Blob([csv], { type: "text/csv;charset=utf-8" });
+  const u = URL.createObjectURL(b);
+  const a = document.createElement("a");
+  a.href = u; a.download = `toeic_words_${getSafeDateKey()}.csv`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
 }
 
-// 重置学习进度
 function resetMastered() {
-  if(confirm("⚠️ 确定要重置所有学习进度吗？\n\n这将删除所有已学记录、收藏和错题本！\n云端数据也会被同步删除！\n建议先导出学习记录备份。")) {
-    mastered = {};
-    favorites = [];
-    wrongWords = [];
-    dailyData = {};
+  if (confirm("⚠️ 重置将清空学习进度、收藏、错题，云端同步！建议先备份！")) {
+    mastered = {}; favorites = []; wrongWords = []; dailyData = {};
     dailyData[todayKey] = 0;
     saveData();
-    switchToList('unmastered');
-    alert("✅ 学习进度已重置并同步到云端");
+    switchToList("unmastered");
+    alert("✅ 已重置并同步云端");
   }
 }
 
-// 显示状态提示：错误用弹窗，成功/信息用顶部状态条
-function showAutoImportStatus(message, type) {
-  if (type === 'error') {
-    // 所有错误提示使用可关闭弹窗
-    alert(message);
-    return;
-  }
-
-  const statusEl = document.getElementById('autoImportStatus');
-  if (!statusEl) return;
-  
-  // 成功提示优先级高于信息提示
-  if (type === 'success') {
-    clearTimeout(statusEl.hideTimeout);
-  }
-  
-  statusEl.innerHTML = message;
-  statusEl.className = `auto-import-status ${type}`;
-  statusEl.style.display = 'flex';
-  
-  // 3秒后自动隐藏成功和信息提示
-  statusEl.hideTimeout = setTimeout(() => {
-    statusEl.style.display = 'none';
-  }, 3000);
+function showAutoImportStatus(msg, type) {
+  const el = document.getElementById("autoImportStatus");
+  if (!el) return;
+  clearTimeout(el.hideTimeout);
+  el.innerHTML = msg;
+  el.className = `auto-import-status ${type}`;
+  el.style.display = "flex";
+  el.hideTimeout = setTimeout(() => el.style.display = "none", 3000);
 }
 
-// ==================== 自动导入核心功能 ====================
-let fileHandle = null;
+// 弹窗
+function showModal(id) { document.getElementById(id).classList.add("active"); }
+function closeModal(id) { document.getElementById(id).classList.remove("active"); }
 
-// 检查是否支持File System Access API
-function isFileSystemAccessSupported() {
-  return 'showOpenFilePicker' in window && window.location.protocol !== 'file:';
-}
-
-// 保存文件句柄到本地存储
-async function saveFileHandle(handle) {
-  try {
-    await localStorage.setItem('csvFileHandle', JSON.stringify(await handle));
-  } catch (e) {
-    console.log("浏览器不支持保存文件句柄，下次打开需重新授权");
-  }
-}
-
-// 从本地存储获取文件句柄
-async function getSavedFileHandle() {
-  try {
-    const handleJson = localStorage.getItem('csvFileHandle');
-    if(handleJson) {
-      return JSON.parse(handleJson);
-    }
-  } catch (e) {
-    return null;
-  }
-  return null;
-}
-
-// 忘记保存的文件句柄
-function forgetFileHandle() {
-  localStorage.removeItem('csvFileHandle');
-  fileHandle = null;
-  showAutoImportStatus("ℹ️ 已忘记自动导入文件，下次打开需重新选择", "info");
-}
-
-// 自动导入文件
-async function autoImportCSV() {
-  if(isImporting) return;
-  if(!isFileSystemAccessSupported()) {
-    return;
-  }
-
-  try {
-    // 先尝试使用保存的文件句柄
-    const savedHandle = await getSavedFileHandle();
-    if(savedHandle) {
-      try {
-        isImporting = true;
-        // 验证文件是否仍然存在且有权限
-        const file = await savedHandle.getFile();
-        const content = await file.text();
-        if(importFromFileContent(content, file.name)) {
-          fileHandle = savedHandle;
-          isImporting = false;
-          return;
-        }
-        isImporting = false;
-      } catch (e) {
-        isImporting = false;
-        console.log("保存的文件不可用，尝试选择新文件");
-      }
-    }
-
-    // 没有保存的句柄或句柄失效，不显示任何提示
-    // 只有当用户手动点击导入时才会显示提示
-
-  } catch (error) {
-    isImporting = false;
-    console.error("自动导入失败:", error);
-  }
-}
-
-// ==================== 拖放导入功能 ====================
-function setupDragAndDrop() {
-  const dropZone = document.getElementById('dropZone');
-  if (!dropZone) return;
-  
-  ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
-    dropZone.addEventListener(eventName, preventDefaults, false);
-  });
-
-  function preventDefaults(e) {
-    e.preventDefault();
-    e.stopPropagation();
-  }
-
-  ['dragenter', 'dragover'].forEach(eventName => {
-    dropZone.addEventListener(eventName, () => {
-      dropZone.classList.add('active');
-    }, false);
-  });
-
-  ['dragleave', 'drop'].forEach(eventName => {
-    dropZone.addEventListener(eventName, () => {
-      dropZone.classList.remove('active');
-    }, false);
-  });
-
-  dropZone.addEventListener('drop', (e) => {
-    if(isImporting) return;
-    
-    const files = e.dataTransfer.files;
-    if(files.length > 0 && files[0].name.endsWith('.csv')) {
-      readFile(files[0]);
-    } else {
-      alert("❌ 请拖放CSV格式的单词库文件");
-    }
-  }, false);
-}
-
-// ==================== 模态框功能 ====================
-function showModal(id) {
-  const modalEl = document.getElementById(id);
-  if (modalEl) {
-    modalEl.classList.add('active');
-  }
-}
-
-function closeModal(id) {
-  const modalEl = document.getElementById(id);
-  if (modalEl) {
-    modalEl.classList.remove('active');
-  }
-}
-
-// 点击模态框外部关闭
-document.querySelectorAll('.modal-overlay').forEach(overlay => {
-  overlay.addEventListener('click', (e) => {
-    if(e.target === overlay) {
-      closeModal(overlay.id);
-    }
-  });
-});
-
-// ==================== 学习列表切换功能 ====================
-function switchToList(listType) {
-  // 停止自动播放
-  if(autoPlay) {
-    toggleAutoPlay();
-  }
-  
-  currentList = listType;
-  index = 0;
-  reveal = false;
-  
-  // 根据列表类型生成对应的单词队列
-  switch(listType) {
-    case 'unmastered':
-      // 未学单词：过滤掉已学的
-      deck = words.filter(word => !mastered[word]);
-      const unmasteredTitle = document.getElementById('currentListTitle');
-      if (unmasteredTitle) unmasteredTitle.textContent = '📚 未学单词';
-      const returnBtn1 = document.getElementById('returnBtn');
-      if (returnBtn1) returnBtn1.style.display = 'none';
-      break;
-    case 'favorites':
-      // 收藏单词：过滤掉已学的
-      deck = favorites.filter(word => !mastered[word]);
-      const favoritesTitle = document.getElementById('currentListTitle');
-      if (favoritesTitle) favoritesTitle.textContent = '⭐ 收藏单词';
-      const returnBtn2 = document.getElementById('returnBtn');
-      if (returnBtn2) returnBtn2.style.display = 'inline-flex';
-      break;
-    case 'wrongWords':
-      // 错题单词：过滤掉已学的
-      deck = wrongWords.filter(word => !mastered[word]);
-      const wrongTitle = document.getElementById('currentListTitle');
-      if (wrongTitle) wrongTitle.textContent = '❌ 错题单词';
-      const returnBtn3 = document.getElementById('returnBtn');
-      if (returnBtn3) returnBtn3.style.display = 'inline-flex';
-      break;
-  }
-  
-  // 如果队列为空，显示提示
-  if(deck.length === 0) {
-    deck = ["该列表暂无未学单词"];
-  }
-  
-  // 更新统计卡片激活状态
-  document.querySelectorAll('.stat-box').forEach(box => {
-    box.classList.remove('active');
-  });
-  const activeStat = document.getElementById(`${listType}Stat`);
-  if (activeStat) activeStat.classList.add('active');
-  
-  updateUI();
-}
-
-// ==================== 每日学习折线图功能 ====================
+// 每日统计图表
 function showDailyChartModal() {
-  // 准备图表数据
-  const dates = Object.keys(dailyData).sort((a, b) => new Date(a) - new Date(b));
-  const counts = dates.map(date => dailyData[date]);
-  
-  // 计算统计数据
+  const dates = Object.keys(dailyData).sort();
+  const counts = dates.map(d => dailyData[d]);
   const totalDays = dates.length;
   const totalLearned = counts.reduce((a, b) => a + b, 0);
   const avgDaily = totalDays > 0 ? Math.round(totalLearned / totalDays * 10) / 10 : 0;
-  
-  // 更新统计数字
-  const totalDaysEl = document.getElementById('totalDays');
-  if (totalDaysEl) totalDaysEl.textContent = totalDays;
-  const totalLearnedEl = document.getElementById('totalLearned');
-  if (totalLearnedEl) totalLearnedEl.textContent = totalLearned;
-  const avgDailyEl = document.getElementById('avgDaily');
-  if (avgDailyEl) avgDailyEl.textContent = avgDaily;
-  
-  // 销毁旧图表
-  if(dailyChart) {
-    dailyChart.destroy();
-  }
-  
-  // 创建新图表
-  const ctx = document.getElementById('dailyChart');
+
+  if (dailyChart) dailyChart.destroy();
+  const ctx = document.getElementById("dailyChart");
   if (!ctx) return;
-  
-  const isDark = document.body.classList.contains('dark-theme');
-  
-  dailyChart = new Chart(ctx.getContext('2d'), {
-    type: 'line',
+  const isDark = document.body.classList.contains("dark-theme");
+
+  dailyChart = new Chart(ctx.getContext("2d"), {
+    type: "line",
     data: {
       labels: dates,
       datasets: [{
-        label: '每日学习单词数',
+        label: "每日学习单词数",
         data: counts,
-        backgroundColor: 'rgba(99, 102, 241, 0.1)',
-        borderColor: '#6366f1',
+        backgroundColor: "rgba(99,102,241,0.1)",
+        borderColor: "#6366f1",
         borderWidth: 2,
         tension: 0.4,
         fill: true,
-        pointBackgroundColor: '#ffffff',
-        pointBorderColor: '#6366f1',
+        pointBackgroundColor: "#fff",
+        pointBorderColor: "#6366f1",
         pointBorderWidth: 2,
         pointRadius: 4
       }]
@@ -1733,329 +1065,193 @@ function showDailyChartModal() {
       responsive: true,
       maintainAspectRatio: false,
       plugins: {
-        legend: {
-          display: false
-        },
+        legend: { display: false },
         tooltip: {
-          backgroundColor: isDark ? '#27272a' : 'rgba(255, 255, 255, 0.9)',
-          titleColor: isDark ? '#fafafa' : '#0f172a',
-          bodyColor: isDark ? '#a1a1aa' : '#64748b',
+          backgroundColor: isDark ? "#27272a" : "rgba(255,255,255,0.9)",
+          titleColor: isDark ? "#fafafa" : "#0f172a",
+          bodyColor: isDark ? "#a1a1aa" : "#64748b",
           callbacks: {
-            title: function(context) {
-              return context[0].label;
-            },
-            label: function(context) {
-              return `学习了 ${context.raw} 个单词`;
-            }
+            title: ctx => ctx[0].label,
+            label: ctx => `学习了 ${ctx.raw} 个单词`
           }
         }
       },
       scales: {
         y: {
           beginAtZero: true,
-          ticks: {
-            stepSize: 10,
-            color: isDark ? '#a1a1aa' : '#64748b'
-          },
-          grid: {
-            color: isDark ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.05)'
-          }
+          ticks: { stepSize: 10, color: isDark ? "#a1a1aa" : "#64748b" },
+          grid: { color: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.05)" }
         },
         x: {
-          grid: {
-            display: false
-          },
-          ticks: {
-            color: isDark ? '#a1a1aa' : '#64748b'
-          }
+          grid: { display: false },
+          ticks: { color: isDark ? "#a1a1aa" : "#64748b" }
         }
       }
     }
   });
-  
   showModal("dailyChartModal");
 }
 
-// ==================== 核心学习功能 ====================
-function currentWord(){
-  return deck[index] || "";
-}
-
-function updateUI(){
-  const word = currentWord();
-  
-  // 安全更新所有UI元素
-  const wordEl = document.getElementById("word");
-  if (wordEl) wordEl.innerText = word;
-  
-  const indexTextEl = document.getElementById("indexText");
-  if (indexTextEl) indexTextEl.innerText = (index + 1) + " / " + deck.length;
-
-  const info = wordDatabase[word] || {
-    transliteration: "暂无音标",
-    chinese: "暂无释义",
-    example: "No example"
+// 云端备份完整函数
+async function createNewBackup(name = "") {
+  if (!cloudSyncEnabled || !userId) { alert("请先登录账号"); return; }
+  const bn = name || genBackupName();
+  const ts = Date.now();
+  const data = {
+    backupName: bn,
+    timestamp: ts,
+    wordDatabase: JSON.parse(JSON.stringify(wordDatabase)),
+    mastered: JSON.parse(JSON.stringify(mastered)),
+    favorites: JSON.parse(JSON.stringify(favorites)),
+    wrongWords: JSON.parse(JSON.stringify(wrongWords)),
+    dailyData: JSON.parse(JSON.stringify(dailyData))
   };
-
-  const transliterationEl = document.getElementById("transliteration");
-  if (transliterationEl) transliterationEl.innerText = info.transliteration;
-  
-  const chineseEl = document.getElementById("chinese");
-  if (chineseEl) chineseEl.innerText = info.chinese;
-  
-  const exampleEl = document.getElementById("example");
-  if (exampleEl) exampleEl.innerText = info.example;
-  
-  const detailsEl = document.getElementById("details");
-  if (detailsEl) detailsEl.style.display = reveal ? "block" : "none";
-
-  // 更新统计数字
-  const unmasteredCount = words.filter(word => !mastered[word]).length;
-  const favoriteCount = favorites.filter(word => !mastered[word]).length;
-  const wrongCount = wrongWords.filter(word => !mastered[word]).length;
-  
-  const unmasteredCountEl = document.getElementById("unmasteredCount");
-  if (unmasteredCountEl) unmasteredCountEl.innerText = unmasteredCount;
-  
-  const favoriteCountEl = document.getElementById("favoriteCount");
-  if (favoriteCountEl) favoriteCountEl.innerText = favoriteCount;
-  
-  const wrongCountEl = document.getElementById("wrongCount");
-  if (wrongCountEl) wrongCountEl.innerText = wrongCount;
-  
-  const dailyCountEl = document.getElementById("dailyCount");
-  if (dailyCountEl) dailyCountEl.innerText = dailyData[todayKey];
-
-  // 更新进度条
-  const progress = Math.round(Object.keys(mastered).length / words.length * 100);
-  const progressTextEl = document.getElementById("progressText");
-  if (progressTextEl) progressTextEl.innerText = progress + "%";
-  
-  const progressEl = document.getElementById("progress");
-  if (progressEl) progressEl.style.width = progress + "%";
-
-  saveData();
-}
-
-function toggleReveal(){
-  reveal = !reveal;
-  updateUI();
-}
-
-function nextWord(){
-  reveal = false;
-  index = (index + 1) % deck.length;
-  updateUI();
-  // 添加100ms延迟确保DOM更新完成后再发音
-  setTimeout(() => {
-    speakWord();
-  }, 100);
-}
-
-function prevWord(){
-  reveal = false;
-  index = (index - 1 + deck.length) % deck.length;
-  updateUI();
-  // 点击上一个也自动发音
-  setTimeout(() => {
-    speakWord();
-  }, 100);
-}
-
-function markKnown(){
-  const word = currentWord();
-  if(word === "该列表暂无未学单词") return;
-  
-  // 标记为已学
-  mastered[word] = true;
-  dailyData[todayKey]++;
-  
-  // 从当前队列中移除
-  deck.splice(index, 1);
-  
-  // 如果队列为空，显示提示
-  if(deck.length === 0) {
-    deck = ["该列表暂无未学单词"];
-    index = 0;
-  } else {
-    // 调整索引
-    index = index % deck.length;
-  }
-  
-  updateUI();
-  // 标记认识后自动发音下一个单词
-  setTimeout(() => {
-    speakWord();
-  }, 100);
-}
-
-function markUnknown(){
-  const word = currentWord();
-  if(word === "该列表暂无未学单词") return;
-  
-  // 添加到错题本（如果不在的话）
-  if(!wrongWords.includes(word)){
-    wrongWords.unshift(word);
-  }
-  dailyData[todayKey]++;
-  nextWord();
-}
-
-function toggleFavorite(){
-  const word = currentWord();
-  if(word === "该列表暂无未学单词") return;
-  
-  if(favorites.includes(word)){
-    favorites = favorites.filter(item => item !== word);
-  }else{
-    favorites.unshift(word);
-  }
-  updateUI();
-}
-
-function shuffleWords(){
-  if(deck.length <= 1 || deck[0] === "该列表暂无未学单词") return;
-  
-  for(let i = deck.length - 1; i > 0; i--){
-    const j = Math.floor(Math.random() * (i + 1));
-    [deck[i], deck[j]] = [deck[j], deck[i]];
-  }
-  index = 0;
-  updateUI();
-  // 打乱后自动发音第一个单词
-  setTimeout(() => {
-    speakWord();
-  }, 100);
-}
-
-function toggleAutoPlay(){
-  if(deck[0] === "该列表暂无未学单词") {
-    alert("当前列表暂无单词可播放");
-    return;
-  }
-  
-  autoPlay = !autoPlay;
-  const btn = document.getElementById("autoBtn");
-  if (!btn) return;
-  
-  if(autoPlay){
-    btn.innerText = "⏸️ 暂停";
-    // 开始自动播放时先发音当前单词
-    setTimeout(() => {
-      speakWord();
-    }, 100);
-    timer = setInterval(nextWord, autoPlayInterval);
-  }else{
-    btn.innerText = "▶️ 自动播放";
-    clearInterval(timer);
-  }
-}
-
-// 增强版发音函数，添加错误处理
-function speakWord(event){
-  if(event) {
-    event.stopPropagation();
-  }
-  
-  const word = currentWord();
-  if(word === "该列表暂无未学单词" || word === "无匹配结果") return;
-  
-  // 检查浏览器是否支持语音合成
-  if(!('speechSynthesis' in window)) {
-    console.error("您的浏览器不支持语音合成功能");
-    return;
-  }
-  
   try {
-    const utterance = new SpeechSynthesisUtterance(word);
-    utterance.lang = "en-US";
-    utterance.rate = 0.9;
-    utterance.volume = 1.0;
-    utterance.pitch = 1.0;
-    
-    // 取消之前的发音
-    speechSynthesis.cancel();
-    // 开始新的发音
-    speechSynthesis.speak(utterance);
-  } catch (error) {
-    console.error("发音失败:", error);
+    await database.ref(`users/${userId}/backups`).push(data);
+    showAutoImportStatus("✅ 云端备份创建成功", "success");
+    refreshBackupList();
+  } catch (e) { alert("备份上传失败：" + e.message); }
+}
+
+function genBackupName() {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const hour = String(d.getHours()).padStart(2, '0');
+  const min = String(d.getMinutes()).padStart(2, '0');
+  return `备份_${year}-${month}-${day}_${hour}-${min}`;
+}
+
+async function refreshBackupList() {
+  const el = document.getElementById("backupList");
+  if (!cloudSyncEnabled || !userId) {
+    el.innerHTML = '<div class="empty">请先登录账号使用云端备份</div>';
+    return;
+  }
+  try {
+    const snap = await database.ref(`users/${userId}/backups`).orderByChild("timestamp").once("value");
+    const d = snap.val() || {};
+    backupList = [];
+    for (let k in d) backupList.push({ key: k, ...d[k] });
+    backupList.sort((a, b) => b.timestamp - a.timestamp);
+    renderBackupList();
+  } catch (e) {
+    el.innerHTML = '<div class="empty">加载备份列表失败</div>';
   }
 }
 
-// 自动播放间隔设置
-function updateInterval() {
-  const input = document.getElementById('intervalInput');
-  if (!input) return;
-  
-  const value = parseFloat(input.value);
-  
-  if(isNaN(value) || value < 1 || value > 30) {
-    alert("请输入1-30之间的数字");
-    input.value = autoPlayInterval / 1000;
+function renderBackupList() {
+  const el = document.getElementById("backupList");
+  if (backupList.length === 0) {
+    el.innerHTML = '<div class="empty">暂无云端备份记录</div>';
     return;
   }
+  let html = "";
+  backupList.forEach(item => {
+    html += `<div class="backup-item">
+      <div class="backup-info">
+        <div class="backup-name">${item.backupName}</div>
+        <div class="backup-time">同步时间：${formatDisplayTime(item.timestamp)}</div>
+      </div>
+      <div class="backup-btn-group">
+        <button class="outline" onclick="restoreBackup('${item.key}')">恢复</button>
+        <button class="outline" onclick="deleteBackup('${item.key}')">删除</button>
+      </div>
+    </div>`;
+  });
+  el.innerHTML = html;
+}
+
+async function restoreBackup(key) {
+  if (!confirm("确定恢复此备份？将覆盖当前单词库+所有学习进度！建议先手动备份。")) return;
+  const item = backupList.find(x => x.key === key);
+  if (!item) return;
   
-  autoPlayInterval = value * 1000;
+  wordDatabase = item.wordDatabase || {};
+  words = Object.keys(wordDatabase);
+  mastered = item.mastered || {};
+  favorites = item.favorites || [];
+  wrongWords = item.wrongWords || [];
+  dailyData = item.dailyData || {};
   
-  // 如果正在自动播放，重启定时器
-  if(autoPlay) {
-    clearInterval(timer);
-    timer = setInterval(nextWord, autoPlayInterval);
-  }
-  
-  alert(`自动播放间隔已设置为 ${value} 秒`);
+  if (!dailyData[todayKey]) dailyData[todayKey] = 0;
+  saveData(false);
+  switchToList(currentList);
+  updateUI();
+  showAutoImportStatus("✅ 已恢复备份", "success");
+}
+
+async function deleteBackup(key) {
+  if (!confirm("确定删除这条备份？删除后无法找回！")) return;
+  try {
+    await database.ref(`users/${userId}/backups/${key}`).remove();
+    showAutoImportStatus("✅ 备份已删除", "success");
+    refreshBackupList();
+  } catch (e) { alert("删除失败：" + e.message); }
+}
+
+// 初始化入口
+window.onload = function () {
+  initTheme();
+  initCollapsibleState();
+  switchToList("unmastered");
+  setupDragAndDrop();
+};
+
+function setupDragAndDrop() {
+  const z = document.getElementById("dropZone");
+  if (!z) return;
+  ["dragenter", "dragover", "dragleave", "drop"].forEach(n => z.addEventListener(n, e => e.preventDefault()));
+  ["dragenter", "dragover"].forEach(n => z.addEventListener(n, () => z.classList.add("active")));
+  ["dragleave", "drop"].forEach(n => z.addEventListener(n, () => z.classList.remove("active")));
+  z.addEventListener("drop", e => {
+    if (isImporting) return;
+    const f = e.dataTransfer.files;
+    if (f.length > 0 && f[0].name.endsWith(".csv")) readFile(f[0]);
+    else alert("请拖放CSV文件");
+  });
 }
 
 // 搜索功能
 const searchInput = document.getElementById("searchInput");
 if (searchInput) {
-  searchInput.addEventListener("input", function(){
-    const value = this.value.toLowerCase();
+  searchInput.addEventListener("input", function () {
+    const v = this.value.toLowerCase();
     let baseList;
-    
-    // 根据当前列表类型获取基础列表
-    switch(currentList) {
-      case 'unmastered':
-        baseList = words.filter(word => !mastered[word]);
-        break;
-      case 'favorites':
-        baseList = favorites.filter(word => !mastered[word]);
-        break;
-      case 'wrongWords':
-        baseList = wrongWords.filter(word => !mastered[word]);
-        break;
+    switch (currentList) {
+      case "unmastered": baseList = words.filter(w => !mastered[w]); break;
+      case "favorites": baseList = favorites.filter(w => !mastered[w]); break;
+      case "wrongWords": baseList = wrongWords.filter(w => !mastered[w]); break;
     }
-    
-    // 搜索过滤
-    deck = baseList.filter(word => word.toLowerCase().includes(value));
-    
-    if(deck.length === 0) {
-      deck = ["无匹配结果"];
-    }
+    deck = baseList.filter(w => w.toLowerCase().includes(v));
+    if (deck.length === 0) deck = ["无匹配结果"];
     index = 0;
     reveal = false;
     updateUI();
-    // 搜索后自动发音第一个结果
-    setTimeout(() => {
-      speakWord();
-    }, 100);
+    setTimeout(speakWord, 100);
   });
 }
 
-// 页面加载时自动执行
-window.addEventListener('load', async () => {
-  initTheme(); // 初始化主题
-  initCollapsibleState(); // 初始化折叠状态
-  setupDragAndDrop();
-  setupAutoCollapse(); // 设置自动折叠功能
-  // 初始化时切换到未学单词列表
-  switchToList('unmastered');
-  // 延迟一点执行自动导入，让页面先加载完成
-  setTimeout(autoImportCSV, 500);
-  // 初始化Firebase匿名登录，开启云端同步
-  signInAnonymously();
+// 仅允许每日统计图表和新建备份模态框点击外部关闭
+document.getElementById("dailyChartModal").addEventListener("click", function(e) {
+  if (e.target === this) {
+    closeModal("dailyChartModal");
+  }
+});
+
+document.getElementById("createBackupModal").addEventListener("click", function(e) {
+  if (e.target === this) {
+    closeModal("createBackupModal");
+  }
+});
+
+// 禁用ESC键关闭登录模态框
+document.addEventListener("keydown", function(e) {
+  if (e.key === "Escape" && document.getElementById("loginModal").classList.contains("active")) {
+    e.preventDefault();
+  }
 });
 </script>
-
 </body>
 </html>
