@@ -3,250 +3,42 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>英语单词记忆系统</title>
+<title>YIMOO 单词学习版</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-database-compat.js"></script>
-<style>
-:root {
-  --primary: #2563eb;
-  --primary-hover: #1d4ed8;
-  --secondary: #64748b;
-  --secondary-hover: #475569;
-  --success: #10b981;
-  --warning: #f59e0b;
-  --danger: #ef4444;
-  --background: #f8fafc;
-  --card-bg: #ffffff;
-  --border: #e2e8f0;
-  --text-primary: #0f172a;
-  --text-secondary: #64748b;
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-  --radius-lg: 16px;
-  --radius-md: 12px;
-  --radius-sm: 8px;
-  --transition: all 0.3 cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.dark-theme {
-  --primary: #6366f1;
-  --primary-hover: #4f46e5;
-  --secondary: #71717a;
-  --secondary-hover: #52525b;
-  --success: #10b981;
-  --warning: #f59e0b;
-  --danger: #ef4444;
-  --background: #18181b;
-  --card-bg: #27272a;
-  --border: #3f3f46;
-  --text-primary: #fafafa;
-  --text-secondary: #a1a1aa;
-  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.5);
-  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.6), 0 2px 4px -1px rgba(0, 0, 0, 0.5);
-}
-
-* {margin:0;padding:0;box-sizing:border-box;}
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: var(--background);
-  color: var(--text-primary);
-  line-height:1.6;
-  padding:16px;
-  min-height:100vh;
-  transition:var(--transition);
-}
-.container {max-width:800px;margin:0 auto;}
-.header {display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;}
-.theme-toggle {background:var(--card-bg);border:1px solid var(--border);border-radius:var(--radius-md);padding:8px 12px;cursor:pointer;font-size:1.2rem;transition:var(--transition);}
-.theme-toggle:hover {background:var(--background);border-color:var(--primary);}
-.card {background:var(--card-bg);border-radius:var(--radius-lg);padding:24px;margin-bottom:20px;box-shadow:var(--shadow-md);transition:var(--transition);}
-h1 {font-size:clamp(1.8rem,4vw,2.5rem);font-weight:700;margin-bottom:0;background:linear-gradient(135deg,var(--primary),#8b5cf6);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;}
-h2 {font-size:clamp(1.2rem,3vw,1.5rem);font-weight:600;margin-bottom:16px;color:var(--text-primary);}
-h3 {font-size:clamp(1rem,2vw,1.2rem);font-weight:600;margin-bottom:12px;color:var(--text-primary);}
-.sync-status {display:flex;align-items:center;gap:6px;font-size:0.85rem;color:var(--text-secondary);margin-top:8px;}
-.sync-status.syncing {color:var(--warning);}
-.sync-status.synced {color:var(--success);}
-.sync-status.error {color:var(--danger);}
-.sync-status.local {color:var(--secondary);}
-.user-status {display:flex;align-items:center;gap:8px;margin-top:12px;padding:10px 14px;background:var(--background);border-radius:var(--radius-md);}
-.user-status .user-email {font-weight:500;color:var(--primary);max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.collapsible-header {display:flex;justify-content:space-between;align-items:center;cursor:pointer;padding:12px 0;border-bottom:1px solid var(--border);margin-bottom:16px;transition:var(--transition);}
-.collapsible-header:hover {color:var(--primary);}
-.collapsible-header h3 {margin:0;display:flex;align-items:center;gap:8px;}
-.collapse-icon {transition:var(--transition);font-size:1.2rem;color:var(--secondary);}
-.collapsed .collapse-icon {transform:rotate(-90deg);}
-.collapsible-content {overflow:hidden;transition:max-height 0.5s ease-in-out,opacity 0.3s ease-in-out;max-height:2000px;opacity:1;}
-.collapsed .collapsible-content {max-height:0;opacity:0;margin-bottom:0;}
-.import-area {background:var(--background);border-radius:var(--radius-md);padding:20px;border:1px dashed var(--border);margin-bottom:24px;}
-.auto-import-status {padding:12px 16px;border-radius:var(--radius-sm);margin-bottom:16px;text-align:center;font-weight:500;display:flex;align-items:center;justify-content:center;gap:8px;}
-.auto-import-status.success {background:#dcfce7;color:#166534;border:1px solid #bbf7d0;}
-.auto-import-status.info {background:#dbeafe;color:#1e40af;border:1px solid #bfdbfe;}
-.auto-import-status.error {background:#fee2e2;color:#991b1b;border:1px solid #fecaca;}
-.dark-theme .auto-import-status.success {background:#064e3b;color:#6ee7b7;border:1px solid #047857;}
-.dark-theme .auto-import-status.info {background:#1e3a8a;color:#93c5fd;border:1px solid #1d4ed8;}
-.dark-theme .auto-import-status.error {background:#7f1d1d;color:#fca5a5;border:1px solid #b91c1c;}
-.drop-zone {border:2px dashed var(--border);border-radius:var(--radius-md);padding:24px;text-align:center;margin-bottom:16px;transition:var(--transition);cursor:pointer;}
-.drop-zone:hover,.drop-zone.active {border-color:var(--primary);background:rgba(99,102,241,0.1);}
-.drop-zone input[type="file"] {display:none;}
-button {padding:10px 16px;border:none;border-radius:var(--radius-md);cursor:pointer;font-size:0.95rem;font-weight:500;transition:var(--transition);display:inline-flex;align-items:center;justify-content:center;gap:6px;white-space:nowrap;}
-button.primary {background:var(--primary);color:#fff;}
-button.primary:hover {background:var(--primary-hover);transform:translateY(-1px);}
-button.secondary {background:var(--secondary);color:#fff;}
-button.secondary:hover {background:var(--secondary-hover);transform:translateY(-1px);}
-button.outline {background:transparent;color:var(--text-primary);border:1px solid var(--border);}
-button.outline:hover {background:var(--background);border-color:var(--primary);color:var(--primary);}
-button.danger {background:var(--danger);color:#fff;}
-button.danger:hover {background:#dc2626;transform:translateY(-1px);}
-.button-group {display:flex;flex-wrap:wrap;gap:8px;margin-top:12px;}
-input {width:100%;padding:12px 16px;border-radius:var(--radius-md);border:1px solid var(--border);font-size:1rem;transition:var(--transition);background:var(--card-bg);color:var(--text-primary);}
-input:focus {outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(99,102,241,0.1);}
-#searchInput {margin-bottom:20px;}
-.progress-bar {width:100%;height:8px;background:var(--border);border-radius:999px;overflow:hidden;margin:20px 0 8px 0;}
-.progress {height:100%;background:linear-gradient(90deg,var(--primary),#8b5cf6);width:0%;transition:width 0.5s ease-in-out;border-radius:999px;}
-#progressText {text-align:center;color:var(--text-secondary);margin-bottom:20px;font-size:0.9rem;}
-.stats {display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:16px;margin-top:20px;}
-.stat-box {background:var(--background);border-radius:var(--radius-md);padding:16px;text-align:center;transition:var(--transition);cursor:pointer;}
-.stat-box:hover {transform:translateY(-2px);box-shadow:var(--shadow-sm);}
-.stat-box.active {background:rgba(99,102,241,0.1);border:2px solid var(--primary);}
-.stat-box h3 {font-size:0.9rem;color:var(--text-secondary);margin-bottom:8px;font-weight:500;}
-.stat-box p {font-size:1.5rem;font-weight:700;color:var(--primary);transition:var(--transition);}
-.learning-list-title {display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;}
-.word-card {border:2px solid var(--border);border-radius:var(--radius-lg);padding:40px 24px;text-align:center;cursor:pointer;transition:var(--transition);min-height:300px;display:flex;flex-direction:column;justify-content:center;align-items:center;background:linear-gradient(135deg,var(--card-bg) 0%,var(--background) 100%);}
-.word-card:hover {border-color:var(--primary);box-shadow:var(--shadow-lg);transform:translateY(-2px);}
-#indexText {font-size:0.9rem;color:var(--text-secondary);margin-bottom:20px;}
-.word {font-size:clamp(2.5rem,8vw,4rem);font-weight:700;margin-bottom:12px;color:var(--text-primary);}
-.transliteration {font-size:clamp(1.2rem,4vw,1.8rem);color:var(--text-secondary);margin-bottom:24px;font-style:italic;}
-#hint {font-size:0.95rem;color:var(--text-secondary);margin-top:20px;}
-#details {width:100%;margin-top:24px;text-align:left;}
-.info-box {background:var(--background);border-radius:var(--radius-md);padding:16px;margin-top:16px;border-left:4px solid var(--primary);}
-.info-box h3 {font-size:1rem;margin-bottom:8px;color:var(--primary);}
-.controls {display:flex;flex-wrap:wrap;gap:8px;margin-top:24px;justify-content:center;align-items:center;}
-.playback-controls {display:flex;flex-wrap:wrap;gap:8px;margin-bottom:24px;justify-content:center;align-items:center;}
-.interval-setting {display:flex;align-items:center;gap:8px;white-space:nowrap;}
-.interval-setting input {width:80px;text-align:center;}
-.empty {background:var(--background);padding:20px;border-radius:var(--radius-md);color:var(--text-secondary);text-align:center;font-style:italic;}
-.modal-overlay {position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.7);display:flex;align-items:center;justify-content:center;z-index:1000;opacity:0;visibility:hidden;transition:var(--transition);padding:20px;}
-.modal-overlay.active {opacity:1;visibility:visible;}
-.modal {background:var(--card-bg);border-radius:var(--radius-lg);padding:24px;max-width:450px;width:100%;max-height:80vh;overflow-y:auto;box-shadow:var(--shadow-xl);transform:translateY(20px);transition:var(--transition);}
-.modal-overlay.active .modal {transform:translateY(0);}
-.modal-header {display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;padding-bottom:12px;border-bottom:1px solid var(--border);}
-.modal-close {background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--text-secondary);padding:0;width:30px;height:30px;display:flex;align-items:center;justify-content:center;border-radius:50%;}
-.modal-close:hover {background:var(--background);color:var(--text-primary);}
-.form-group {margin-bottom:16px;}
-.form-group label {display:block;margin-bottom:6px;font-weight:500;color:var(--text-primary);}
-.form-group input {width:100%;}
-.form-footer {margin-top:20px;text-align:center;color:var(--text-secondary);font-size:0.9rem;}
-.form-footer a {color:var(--primary);cursor:pointer;text-decoration:underline;}
-.form-footer .forgot-password {float:right;margin-top:-10px;font-size:0.85rem;}
-.chart-container {position:relative;height:300px;width:100%;}
-.footer {text-align:center;padding:20px;color:var(--text-secondary);font-size:0.9rem;margin-top:40px;}
-
-.backup-list {margin-top:16px;max-height:320px;overflow-y:auto;}
-.backup-item {display:flex;justify-content:space-between;align-items:center;padding:12px;border:1px solid var(--border);border-radius:var(--radius-md);margin-bottom:10px;gap:10px;}
-.backup-info {flex:1;min-width:0;}
-.backup-name {font-weight:600;color:var(--text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.backup-time {font-size:0.85rem;color:var(--text-secondary);margin-top:4px;}
-.backup-btn-group {display:flex;gap:6px;flex-shrink:0;}
-.backup-btn-group button {padding:6px 10px;font-size:0.85rem;}
-
-/* 登录时隐藏主内容 */
-#mainContent {
-  display: none;
-}
-
-#mainContent.visible {
-  display: block;
-}
-
-@media (max-width:600px){
-  body{padding:12px;}
-  .card{padding:20px;}
-  .stats{grid-template-columns:repeat(2,1fr);}
-  .word{font-size:2.2rem;}
-  .transliteration{font-size:1.4rem;}
-  .controls{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;}
-  .controls button{width:100%;}
-  .playback-controls{flex-direction:column;align-items:stretch;}
-  .playback-controls button{width:100%;}
-  .interval-setting{justify-content:center;}
-  .button-group{display:grid;grid-template-columns:repeat(2,1fr);}
-  .modal{padding:20px;}
-  .chart-container{height:250px;}
-  .learning-list-title{flex-direction:column;align-items:flex-start;gap:10px;}
-  .backup-item{flex-wrap:wrap;}
-  .user-status{flex-direction:column;align-items:flex-start;}
-}
-@media (max-width:400px){
-  .stats{grid-template-columns:1fr;}
-  .controls{grid-template-columns:1fr;}
-  .button-group{grid-template-columns:1fr;}
-}
-</style>
+<link rel="stylesheet" href="toeic.css">
 </head>
 <body>
-<!-- 主内容区域 -->
 <div id="mainContent" class="container">
   <div class="card">
     <div class="header">
-      <h1>TOEIC 单词背诵系统</h1>
-      <button class="theme-toggle" onclick="toggleTheme()" id="themeToggle">🌙</button>
+      <h1>YIMOO 单词学习</h1>
+      <div class="header-right">
+        <button class="icon-btn" id="recordManagerBtn" onclick="showRecordManagerModal()" style="display:none;">
+          📁
+        </button>
+        <div class="avatar-dropdown" id="avatarDropdown" style="display:none;">
+          <button class="icon-btn avatar-btn" onclick="toggleAvatarMenu()">👤</button>
+          <div class="avatar-menu" id="avatarMenu">
+            <div class="avatar-menu-header">
+              <div class="avatar">👤</div>
+              <div class="user-info">
+                <div class="user-email" id="avatarUserEmail"></div>
+                <div class="user-status" id="avatarUserStatus">已登录</div>
+              </div>
+            </div>
+            <div class="avatar-menu-divider"></div>
+            <button class="avatar-menu-item" onclick="showLoginModal(true)">🔄 切换账号</button>
+            <button class="avatar-menu-item danger" onclick="signOut()">🚪 登出</button>
+          </div>
+        </div>
+        <button class="icon-btn theme-toggle" onclick="toggleTheme()" id="themeToggle">🌙</button>
+      </div>
     </div>
 
-    <!-- 登录状态显示 -->
-    <div id="userStatus" class="user-status" style="display:none;">
-      <span>👤 已登录：</span>
-      <span id="userEmail" class="user-email"></span>
-      <button class="outline" onclick="showLoginModal()">切换账号</button>
-      <button class="danger" onclick="signOut()">登出</button>
-    </div>
-
-    <div id="syncStatus" class="sync-status">
-      <span>☁️</span> <span id="syncStatusText">正在连接云端...</span>
-    </div>
     <div id="autoImportStatus" class="auto-import-status" style="display:none;"></div>
-
-    <!-- 合并后的单词库与云端备份管理 -->
-    <div class="collapsible" id="wordLibraryManager">
-      <div class="collapsible-header" onclick="toggleCollapsible('wordLibraryManager')">
-        <h3><span>📚</span> 单词库与云端备份管理</h3>
-        <span class="collapse-icon">▼</span>
-      </div>
-      <div class="collapsible-content">
-        <p style="color:var(--text-secondary);margin-bottom:16px;">
-          导入CSV自动同步单词库+学习记录到云端备份 | 跨设备恢复任意历史版本
-        </p>
-        
-        <!-- 单词库导入区域 -->
-        <div class="import-area">
-          <div id="dropZone" class="drop-zone">
-            <p>拖放CSV文件到此处导入单词库</p>
-            <p style="margin:8px 0;color:var(--text-secondary);">或</p>
-            <button class="primary" onclick="document.getElementById('csvFileInput').click()">选择单词库文件</button>
-            <input type="file" id="csvFileInput" accept=".csv" onchange="importCSV(event)">
-          </div>
-        </div>
-
-        <!-- 云端备份与操作按钮区 -->
-        <div>
-          <h3 style="margin-bottom:12px;"><span>☁️</span> 云端备份与数据操作</h3>
-          <p style="color:var(--text-secondary);margin-bottom:12px;font-size:0.9rem;">
-            导入单词库自动生成云端备份，可随时导出、同步、重置或恢复历史版本
-          </p>
-          <div class="button-group">
-            <button class="primary" onclick="showCreateBackupModal()">💾 手动新建云端备份</button>
-            <button class="outline" onclick="refreshBackupList()">🔄 刷新备份列表</button>
-            <button class="outline" onclick="exportCSV()">导出当前单词库</button>
-            <button class="outline" onclick="syncToCloud()">🔄 立即同步</button>
-            <button class="outline" onclick="resetMastered()">重置学习进度</button>
-          </div>
-          <div class="backup-list" id="backupList">
-            <div class="empty">请先登录账号使用云端备份</div>
-          </div>
-        </div>
-      </div>
-    </div>
 
     <div class="progress-bar"><div class="progress" id="progress"></div></div>
     <p id="progressText">0%</p>
@@ -277,21 +69,24 @@ input:focus {outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(
     </div>
     <input id="searchInput" placeholder="🔍 搜索单词...">
     <div class="playback-controls">
-      <button class="outline" onclick="shuffleWords()">🔀 打乱顺序</button>
-      <button class="outline" onclick="toggleAutoPlay()" id="autoBtn">▶️ 自动播放</button>
+      <button class="outline" onclick="shuffleWords()">🔀 打乱</button>
+      <button class="outline" onclick="toggleAutoPlay()" id="autoBtn">▶️ 播放</button>
       <div class="interval-setting">
-        <label for="intervalInput">自动播放间隔：</label>
+        <label for="intervalInput">间隔：</label>
         <input type="number" id="intervalInput" min="1" max="30" value="4" step="0.5">
         <span>秒</span>
         <button class="outline" onclick="updateInterval()">应用</button>
       </div>
     </div>
     <div class="word-card" onclick="toggleReveal()">
+      <div class="nav-arrow left-arrow" onclick="prevWord(event)">‹</div>
+      <div class="nav-arrow right-arrow" onclick="nextWord(event)">›</div>
+      
       <div id="indexText">1 / 1</div>
       <div class="word" id="word">bill</div>
       <div class="transliteration" id="transliteration">/bɪl/</div>
       <button class="primary" onclick="speakWord(event)">🔊 发音</button>
-      <div id="hint">点击卡片查看释义和例句</div>
+      <div id="hint">点击卡片查看释义</div>
       <div id="details" style="display:none">
         <div class="info-box">
           <h3>中文释义</h3>
@@ -307,17 +102,16 @@ input:focus {outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(
       <button class="primary" onclick="markKnown()">✅ 认识</button>
       <button class="secondary" onclick="markUnknown()">❌ 不熟</button>
       <button class="outline" onclick="toggleFavorite()">⭐ 收藏</button>
-      <button class="outline" onclick="prevWord()">⬅️ 上一个</button>
-      <button class="outline" onclick="nextWord()">➡️ 下一个</button>
     </div>
   </div>
 </div>
 
-<!-- 登录/注册/密码重置模态框 -->
+<!-- 登录弹窗 -->
 <div class="modal-overlay" id="loginModal">
   <div class="modal">
     <div class="modal-header">
-      <h2 id="loginModalTitle">欢迎使用单词记忆系统，请登录账号</h2>
+      <h2 id="loginModalTitle">欢迎使用YIMOO单词学习版，请登录账号~</h2>
+      <button class="modal-close" id="loginModalClose" onclick="closeModal('loginModal')" style="display:none;">&times;</button>
     </div>
     <form id="loginForm" onsubmit="handleLoginSubmit(event)">
       <div class="form-group">
@@ -335,31 +129,126 @@ input:focus {outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(
       <div class="form-footer" id="loginFormSwitch">
         没有账号？<a onclick="switchToRegister()">立即注册</a>
       </div>
+      <!-- 新增版权+咨询 -->
+      <div style="margin-top:16px;text-align:center;font-size:0.75rem;color:var(--text-secondary);line-height:1.5;">
+        © CC YIMOO 版权所有<br>
+        疑问咨询：1035605573@qq.com
+      </div>
     </form>
   </div>
 </div>
 
-<!-- 新建备份名称模态框 -->
-<div class="modal-overlay" id="createBackupModal">
+<!-- 选择学习记录弹窗 -->
+<div class="modal-overlay" id="selectBackupModal">
   <div class="modal">
     <div class="modal-header">
-      <h2>新建云端备份</h2>
-      <button class="modal-close" onclick="closeModal('createBackupModal')">&times;</button>
+      <h2>选择学习记录</h2>
     </div>
-    <form id="createBackupForm" onsubmit="handleCreateBackup(event)">
-      <div class="form-group">
-        <label for="backupNameInput">备份名称</label>
-        <input type="text" id="backupNameInput" required placeholder="请输入备份名称">
+    <div class="modal-body">
+      <p style="margin-bottom:16px;color:var(--text-secondary);">
+        选择一个已有的学习记录继续学习，或者导入新的单词库
+      </p>
+      <div class="backup-list" id="selectBackupList">
+        <div class="empty">正在加载学习记录...</div>
       </div>
       <div style="display:flex;gap:10px;margin-top:20px;">
-        <button type="button" class="outline" style="flex:1;" onclick="closeModal('createBackupModal')">取消</button>
-        <button type="submit" class="primary" style="flex:1;" id="createBackupSubmitBtn">确定</button>
+        <button class="outline" style="flex:1;" onclick="showImportFromSelectModal()">
+          📥 导入新单词库
+        </button>
+        <button class="primary" style="flex:1;" id="selectBackupConfirmBtn" disabled onclick="confirmSelectBackup()">
+          ✅ 确认选择
+        </button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 导入单词库 -->
+<div class="modal-overlay" id="importModal" style="z-index: 1050;">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>导入单词库</h2>
+      <button class="modal-close" onclick="closeModal('importModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <div id="importDropZone" class="drop-zone">
+        <p>拖放CSV文件到此处导入</p>
+        <p style="margin:8px 0;color:var(--text-secondary);">或</p>
+        <button class="primary" onclick="document.getElementById('importFileInput').click()">选择文件</button>
+        <input type="file" id="importFileInput" accept=".csv" onchange="importCSV(event)">
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 密码验证 -->
+<div class="modal-overlay" id="passwordVerifyModal" style="z-index: 1100;">
+  <div class="modal">
+    <div class="modal-header">
+      <h2 id="passwordVerifyTitle">验证身份</h2>
+      <button class="modal-close" onclick="closeModal('passwordVerifyModal')">&times;</button>
+    </div>
+    <form id="passwordVerifyForm" onsubmit="handlePasswordVerify(event)">
+      <div class="form-group">
+        <label for="verifyPasswordInput">请输入登录密码</label>
+        <input type="password" id="verifyPasswordInput" required placeholder="请输入密码">
+      </div>
+      <div style="display:flex;gap:10px;margin-top:20px;">
+        <button type="button" class="outline" style="flex:1;" onclick="closeModal('passwordVerifyModal')">取消</button>
+        <button type="submit" class="primary danger" style="flex:1;" id="verifySubmitBtn">确认</button>
       </div>
     </form>
   </div>
 </div>
 
-<!-- 每日统计图表模态框 -->
+<!-- 记录管理 -->
+<div class="modal-overlay" id="recordManagerModal">
+  <div class="modal" style="max-width:600px;">
+    <div class="modal-header">
+      <h2>📁 学习记录管理</h2>
+      <button class="modal-close" onclick="closeModal('recordManagerModal')">&times;</button>
+    </div>
+    <div class="modal-body">
+      <p style="margin-bottom:12px;color:var(--text-secondary);">
+        勾选记录后可执行恢复、删除、重命名、保存、重置、导出操作
+      </p>
+      <div class="button-group" style="margin-bottom:16px;">
+        <button class="outline" onclick="showImportModal()">📥 导入单词库</button>
+        <button class="outline backup-action-btn" onclick="exportSelectedBackup()" disabled>📤 导出单词库</button>
+        <button class="outline backup-action-btn" onclick="restoreSelectedBackup()" disabled>↩️ 恢复</button>
+        <button class="outline backup-action-btn" onclick="deleteSelectedBackup()" disabled>🗑️ 删除</button>
+        <button class="outline backup-action-btn" onclick="showRenameBackupModal()" disabled>✏️ 重命名</button>
+        <button class="outline backup-action-btn" onclick="syncFromSelectedBackup()" disabled>💾 保存进度</button>
+        <button class="outline backup-action-btn" onclick="resetFromSelectedBackup()" disabled>🔁 重置进度</button>
+      </div>
+      <div class="backup-list" id="recordManagerBackupList">
+        <div class="empty">暂无学习记录</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 重命名 -->
+<div class="modal-overlay" id="renameBackupModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>重命名学习记录</h2>
+      <button class="modal-close" onclick="closeModal('renameBackupModal')">&times;</button>
+    </div>
+    <form id="renameBackupForm" onsubmit="handleRenameBackup(event)">
+      <div class="form-group">
+        <label for="renameBackupInput">新记录名称</label>
+        <input type="text" id="renameBackupInput" required placeholder="请输入新名称">
+      </div>
+      <div style="display:flex;gap:10px;margin-top:20px;">
+        <button type="button" class="outline" style="flex:1;" onclick="closeModal('renameBackupModal')">取消</button>
+        <button type="submit" class="primary" style="flex:1;" id="renameBackupSubmitBtn">确定</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<!-- 统计图表 -->
 <div class="modal-overlay" id="dailyChartModal">
   <div class="modal">
     <div class="modal-header">
@@ -370,888 +259,8 @@ input:focus {outline:none;border-color:var(--primary);box-shadow:0 0 0 3px rgba(
   </div>
 </div>
 
-<script>
-// ========== 请替换为你自己的 Firebase 配置 ==========
-const firebaseConfig = {
-  apiKey: "AIzaSyA101QAIovjn3AZKwXVQbm1CWEljTsHQLc",
-  authDomain: "topic-words.firebaseapp.com",
-  databaseURL: "https://topic-words-default-rtdb.firebaseio.com",
-  projectId: "topic-words",
-  storageBucket: "topic-words.firebasestorage.app",
-  messagingSenderId: "375241220207",
-  appId: "1:375241220207:web:044675f042d731ac6aad9a"
-};
-
-let firebaseApp, auth, database;
-let cloudSyncEnabled = false;
-let userId = null;
-let userEmail = null;
-let syncTimeout = null;
-let backupList = [];
-let dailyChart = null;
-let isRegisterMode = false;
-let isPasswordResetMode = false;
-
-// 日期工具函数
-function getSafeDateKey(date = new Date()) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
-  return `${year}-${month}-${day}`;
-}
-
-function formatDisplayTime(timestamp) {
-  if (!timestamp) return "";
-  return new Date(timestamp).toLocaleString('zh-CN');
-}
-
-// 折叠面板切换
-function toggleCollapsible(id) {
-  const el = document.getElementById(id);
-  if (!el) return;
-  el.classList.toggle("collapsed");
-  localStorage.setItem(`collapsible_${id}`, el.classList.contains("collapsed"));
-}
-
-// 主题切换
-function toggleTheme() {
-  const b = document.body;
-  const t = document.getElementById("themeToggle");
-  b.classList.toggle("dark-theme");
-  if (b.classList.contains("dark-theme")) {
-    t.textContent = "☀️";
-    localStorage.setItem("theme", "dark");
-  } else {
-    t.textContent = "🌙";
-    localStorage.setItem("theme", "light");
-  }
-  updateChartTheme();
-}
-
-function initTheme() {
-  const s = localStorage.getItem("theme");
-  const t = document.getElementById("themeToggle");
-  if (s === "dark") {
-    document.body.classList.add("dark-theme");
-    t.textContent = "☀️";
-  } else {
-    document.body.classList.remove("dark-theme");
-    t.textContent = "🌙";
-  }
-}
-
-function updateChartTheme() {
-  if (!dailyChart) return;
-  const d = document.body.classList.contains("dark-theme");
-  dailyChart.options.scales.y.grid.color = d ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.05)";
-  dailyChart.options.scales.y.ticks.color = d ? "#a1a1aa" : "#64748b";
-  dailyChart.options.scales.x.ticks.color = d ? "#a1a1aa" : "#64748b";
-  dailyChart.update();
-}
-
-function initCollapsibleState() {
-  document.querySelectorAll(".collapsible").forEach(el => {
-    const id = el.id;
-    const c = localStorage.getItem(`collapsible_${id}`) === "true";
-    if (c) el.classList.add("collapsed");
-  });
-}
-
-function updateSyncStatus(status, text) {
-  const e = document.getElementById("syncStatus");
-  const t = document.getElementById("syncStatusText");
-  if (!e || !t) return;
-  e.className = `sync-status ${status}`;
-  const map = {
-    syncing: "正在同步...",
-    synced: "已同步到云端",
-    error: "同步失败",
-    local: "本地模式（请登录账号）"
-  };
-  t.textContent = text || map[status] || "正在连接云端...";
-}
-
-function updateUserStatus() {
-  const statusEl = document.getElementById("userStatus");
-  const emailEl = document.getElementById("userEmail");
-  
-  if (userId && userEmail) {
-    statusEl.style.display = "flex";
-    emailEl.textContent = userEmail;
-  } else {
-    statusEl.style.display = "none";
-  }
-}
-
-// Firebase 初始化
-if (window.location.protocol !== 'file:') {
-  try {
-    firebaseApp = firebase.initializeApp(firebaseConfig);
-    auth = firebase.auth();
-    database = firebase.database();
-    cloudSyncEnabled = true;
-    
-    // 监听用户登录状态变化
-    auth.onAuthStateChanged(user => {
-      if (user) {
-        userId = user.uid;
-        userEmail = user.email;
-        updateUserStatus();
-        updateSyncStatus("synced", "已登录并连接云端");
-        pullFromCloud();
-        setTimeout(refreshBackupList, 1200);
-        
-        // 登录成功后显示主内容，隐藏登录模态框
-        document.getElementById("mainContent").classList.add("visible");
-        closeModal("loginModal");
-      } else {
-        userId = null;
-        userEmail = null;
-        updateUserStatus();
-        updateSyncStatus("local");
-        
-        // 未登录时隐藏主内容，显示登录模态框
-        document.getElementById("mainContent").classList.remove("visible");
-        showLoginModal();
-      }
-    });
-  } catch (e) {
-    console.error("Firebase初始化失败", e);
-    cloudSyncEnabled = false;
-    updateSyncStatus("error", "云端连接失败，本地模式");
-  }
-}
-
-// 登录/注册/密码重置相关函数
-function showLoginModal() {
-  isRegisterMode = false;
-  isPasswordResetMode = false;
-  document.getElementById("loginModalTitle").textContent = "登录账号";
-  document.getElementById("loginSubmitBtn").textContent = "登录";
-  document.getElementById("passwordGroup").style.display = "block";
-  document.getElementById("passwordInput").required = true; // 恢复必填
-  document.getElementById("loginFormSwitch").innerHTML = '没有账号？<a onclick="switchToRegister()">立即注册</a>';
-  document.getElementById("emailInput").value = "";
-  document.getElementById("passwordInput").value = "";
-  showModal("loginModal");
-}
-
-function switchToRegister() {
-  isRegisterMode = true;
-  isPasswordResetMode = false;
-  document.getElementById("loginModalTitle").textContent = "注册账号";
-  document.getElementById("loginSubmitBtn").textContent = "注册";
-  document.getElementById("passwordGroup").style.display = "block";
-  document.getElementById("passwordInput").required = true; // 恢复必填
-  document.getElementById("loginFormSwitch").innerHTML = '已有账号？<a onclick="switchToLogin()">立即登录</a>';
-}
-
-function switchToLogin() {
-  isRegisterMode = false;
-  isPasswordResetMode = false;
-  document.getElementById("loginModalTitle").textContent = "登录账号";
-  document.getElementById("loginSubmitBtn").textContent = "登录";
-  document.getElementById("passwordGroup").style.display = "block";
-  document.getElementById("passwordInput").required = true; // 恢复必填
-  document.getElementById("loginFormSwitch").innerHTML = '没有账号？<a onclick="switchToRegister()">立即注册</a>';
-}
-
-function showPasswordResetForm() {
-  isPasswordResetMode = true;
-  isRegisterMode = false;
-  document.getElementById("loginModalTitle").textContent = "重置密码";
-  document.getElementById("loginSubmitBtn").textContent = "发送重置链接";
-  document.getElementById("passwordGroup").style.display = "none";
-  document.getElementById("passwordInput").required = false; // 移除必填，解决报错
-  document.getElementById("loginFormSwitch").innerHTML = '记得密码？<a onclick="switchToLogin()">返回登录</a>';
-}
-
-async function handleLoginSubmit(event) {
-  event.preventDefault();
-  const email = document.getElementById("emailInput").value.trim();
-  const password = document.getElementById("passwordInput").value;
-  const submitBtn = document.getElementById("loginSubmitBtn");
-  
-  submitBtn.disabled = true;
-  
-  try {
-    if (isPasswordResetMode) {
-      // 发送密码重置邮件
-      submitBtn.textContent = "发送中...";
-      await auth.sendPasswordResetEmail(email);
-      showAutoImportStatus("✅ 密码重置链接已发送到您的邮箱", "success");
-      switchToLogin();
-    } else if (isRegisterMode) {
-      // 注册新用户
-      submitBtn.textContent = "注册中...";
-      await auth.createUserWithEmailAndPassword(email, password);
-      showAutoImportStatus("✅ 账号注册成功，已自动登录", "success");
-    } else {
-      // 登录已有用户
-      submitBtn.textContent = "登录中...";
-      await auth.signInWithEmailAndPassword(email, password);
-      showAutoImportStatus("✅ 登录成功", "success");
-    }
-  } catch (error) {
-    let errorMessage = "操作失败";
-    switch (error.code) {
-      case "auth/email-already-in-use":
-        errorMessage = "该邮箱已被注册，请直接登录";
-        break;
-      case "auth/invalid-email":
-        errorMessage = "邮箱格式不正确";
-        break;
-      case "auth/user-not-found":
-        errorMessage = "该账号不存在，请先注册";
-        break;
-      case "auth/wrong-password":
-        errorMessage = "密码错误";
-        break;
-      case "auth/weak-password":
-        errorMessage = "密码太弱，至少需要6位";
-        break;
-      case "auth/network-request-failed":
-        errorMessage = "网络错误，请检查网络连接";
-        break;
-      case "auth/user-disabled":
-        errorMessage = "该账号已被禁用";
-        break;
-      case "auth/too-many-requests":
-        errorMessage = "操作过于频繁，请稍后再试";
-        break;
-    }
-    showAutoImportStatus("❌ " + errorMessage, "error");
-    submitBtn.disabled = false;
-    submitBtn.textContent = isPasswordResetMode ? "发送重置链接" : (isRegisterMode ? "注册" : "登录");
-  }
-}
-
-async function signOut() {
-  if (!confirm("确定要登出吗？登出后将无法使用云端功能。")) return;
-  try {
-    await auth.signOut();
-    // 清空本地数据
-    localStorage.clear();
-    location.reload(); // 刷新页面重置状态
-  } catch (error) {
-    showAutoImportStatus("❌ 登出失败：" + error.message, "error");
-  }
-}
-
-function syncToCloud() {
-  if (!cloudSyncEnabled || !userId || window.location.protocol === "file:") return;
-  clearTimeout(syncTimeout);
-  syncTimeout = setTimeout(() => {
-    updateSyncStatus("syncing");
-    const d = {
-      version: "1.0",
-      lastSync: firebase.database.ServerValue.TIMESTAMP,
-      mastered,
-      favorites,
-      wrongWords,
-      dailyData
-    };
-    database.ref(`users/${userId}/learningData`).set(d)
-      .then(() => updateSyncStatus("synced"))
-      .catch(e => {
-        console.error("同步失败", e);
-        updateSyncStatus("error", "同步失败");
-      });
-  }, 3000);
-}
-
-function pullFromCloud() {
-  if (!cloudSyncEnabled || !userId || window.location.protocol === "file:") return;
-  updateSyncStatus("syncing", "拉取云端数据...");
-  database.ref(`users/${userId}/learningData`).once("value").then(s => {
-    if (s.exists()) {
-      const c = s.val();
-      const l = parseInt(localStorage.getItem("lastSync") || "0");
-      const ct = c.lastSync || 0;
-      if (ct > l) {
-        mastered = c.mastered || {};
-        favorites = c.favorites || [];
-        wrongWords = c.wrongWords || [];
-        dailyData = c.dailyData || {};
-        saveData(false);
-        switchToList(currentList);
-      }
-    }
-    updateSyncStatus("synced");
-  }).catch(e => {
-    updateSyncStatus("error", "拉取云端失败");
-  });
-}
-
-// 新建备份相关函数
-function showCreateBackupModal() {
-  if (!cloudSyncEnabled || !userId) {
-    alert("请先登录账号");
-    return;
-  }
-  // 自动填充默认名称
-  const d = new Date();
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  const hour = String(d.getHours()).padStart(2, '0');
-  const min = String(d.getMinutes()).padStart(2, '0');
-  document.getElementById("backupNameInput").value = `备份_${year}-${month}-${day}_${hour}-${min}`;
-  showModal("createBackupModal");
-}
-
-async function handleCreateBackup(event) {
-  event.preventDefault();
-  const backupName = document.getElementById("backupNameInput").value.trim();
-  const submitBtn = document.getElementById("createBackupSubmitBtn");
-  
-  if (!backupName) {
-    alert("请输入备份名称");
-    return;
-  }
-  
-  submitBtn.disabled = true;
-  submitBtn.textContent = "创建中...";
-  
-  try {
-    const ts = Date.now();
-    const data = {
-      backupName: backupName,
-      timestamp: ts,
-      wordDatabase: JSON.parse(JSON.stringify(wordDatabase)),
-      mastered: JSON.parse(JSON.stringify(mastered)),
-      favorites: JSON.parse(JSON.stringify(favorites)),
-      wrongWords: JSON.parse(JSON.stringify(wrongWords)),
-      dailyData: JSON.parse(JSON.stringify(dailyData))
-    };
-    await database.ref(`users/${userId}/backups`).push(data);
-    showAutoImportStatus("✅ 云端备份创建成功", "success");
-    closeModal("createBackupModal");
-    refreshBackupList();
-  } catch (e) {
-    alert("备份上传失败：" + e.message);
-  } finally {
-    submitBtn.disabled = false;
-    submitBtn.textContent = "确定";
-  }
-}
-
-// 单词核心数据
-let wordDatabase = JSON.parse(localStorage.getItem("wordDatabase") || "{}");
-let words = Object.keys(wordDatabase).length > 0 ? Object.keys(wordDatabase) : ["bill", "charge", "strategy", "comply", "negotiate"];
-const defaultWordInfo = {
-  bill: { transliteration: "/bɪl/", chinese: "账单；法案", example: "Please pay the bill before leaving." },
-  charge: { transliteration: "/tʃɑːrdʒ/", chinese: "收费；充电；指控", example: "The company will charge extra for delivery." },
-  strategy: { transliteration: "/ˈstrætədʒi/", chinese: "策略；战略", example: "We need a better strategy." },
-  comply: { transliteration: "/kəmˈplaɪ/", chinese: "遵守", example: "All must comply with rules." },
-  negotiate: { transliteration: "/nɪˈɡəʊʃieɪt/", chinese: "谈判；协商", example: "They negotiated a discount." }
-};
-wordDatabase = Object.assign({}, defaultWordInfo, wordDatabase);
-
-let currentList = "unmastered", deck = [], index = 0, reveal = false, autoPlay = false, timer = null;
-let autoPlayInterval = 4000, isImporting = false;
-let favorites = JSON.parse(localStorage.getItem("favorites") || "[]");
-let wrongWords = JSON.parse(localStorage.getItem("wrongWords") || "[]");
-let mastered = JSON.parse(localStorage.getItem("mastered") || "{}");
-let dailyData = JSON.parse(localStorage.getItem("dailyData") || "{}");
-
-// 使用安全日期格式
-const todayKey = getSafeDateKey();
-if (!dailyData[todayKey]) dailyData[todayKey] = 0;
-
-function saveData(sync = true) {
-  localStorage.setItem("wordDatabase", JSON.stringify(wordDatabase));
-  localStorage.setItem("favorites", JSON.stringify(favorites));
-  localStorage.setItem("wrongWords", JSON.stringify(wrongWords));
-  localStorage.setItem("mastered", JSON.stringify(mastered));
-  localStorage.setItem("dailyData", JSON.stringify(dailyData));
-  localStorage.setItem("lastSync", Date.now().toString());
-  if (sync && cloudSyncEnabled && userId && window.location.protocol !== "file:") syncToCloud();
-}
-
-// 背诵核心函数
-function toggleReveal() {
-  reveal = !reveal;
-  updateUI();
-}
-
-function speakWord(e) {
-  if (e) e.stopPropagation();
-  const w = currentWord();
-  if (w === "该列表暂无未学单词" || w === "无匹配结果") return;
-  if (!("speechSynthesis" in window)) return;
-  try {
-    const u = new SpeechSynthesisUtterance(w);
-    u.lang = "en-US";
-    u.rate = 0.9;
-    speechSynthesis.cancel();
-    speechSynthesis.speak(u);
-  } catch (err) { }
-}
-
-function currentWord() { return deck[index] || ""; }
-
-function updateUI() {
-  const w = currentWord();
-  document.getElementById("word").innerText = w;
-  document.getElementById("indexText").innerText = `${index + 1} / ${deck.length}`;
-  const info = wordDatabase[w] || { transliteration: "暂无音标", chinese: "暂无释义", example: "No example" };
-  document.getElementById("transliteration").innerText = info.transliteration;
-  document.getElementById("chinese").innerText = info.chinese;
-  document.getElementById("example").innerText = info.example;
-  document.getElementById("details").style.display = reveal ? "block" : "none";
-
-  const un = words.filter(x => !mastered[x]).length;
-  const fav = favorites.filter(x => !mastered[x]).length;
-  const wr = wrongWords.filter(x => !mastered[x]).length;
-  document.getElementById("unmasteredCount").innerText = un;
-  document.getElementById("favoriteCount").innerText = fav;
-  document.getElementById("wrongCount").innerText = wr;
-  document.getElementById("dailyCount").innerText = dailyData[todayKey];
-  const prog = Math.round(Object.keys(mastered).length / words.length * 100);
-  document.getElementById("progressText").innerText = `${prog}%`;
-  document.getElementById("progress").style.width = `${prog}%`;
-  saveData(false);
-}
-
-function switchToList(type) {
-  if (autoPlay) toggleAutoPlay();
-  currentList = type;
-  index = 0;
-  reveal = false;
-  switch (type) {
-    case "unmastered":
-      deck = words.filter(w => !mastered[w]);
-      document.getElementById("currentListTitle").textContent = "📚 未学单词";
-      document.getElementById("returnBtn").style.display = "none";
-      break;
-    case "favorites":
-      deck = favorites.filter(w => !mastered[w]);
-      document.getElementById("currentListTitle").textContent = "⭐ 收藏单词";
-      document.getElementById("returnBtn").style.display = "inline-flex";
-      break;
-    case "wrongWords":
-      deck = wrongWords.filter(w => !mastered[w]);
-      document.getElementById("currentListTitle").textContent = "❌ 错题单词";
-      document.getElementById("returnBtn").style.display = "inline-flex";
-      break;
-  }
-  if (deck.length === 0) deck = ["该列表暂无未学单词"];
-  updateUI();
-}
-
-function nextWord() {
-  reveal = false;
-  index = (index + 1) % deck.length;
-  updateUI();
-  setTimeout(speakWord, 100);
-}
-
-function prevWord() {
-  reveal = false;
-  index = (index - 1 + deck.length) % deck.length;
-  updateUI();
-  setTimeout(speakWord, 100);
-}
-
-// 点击认识后自动发音
-function markKnown() {
-  const w = currentWord();
-  if (w === "该列表暂无未学单词") return;
-  mastered[w] = true;
-  dailyData[todayKey]++;
-  deck.splice(index, 1);
-  if (deck.length === 0) deck = ["该列表暂无未学单词"], index = 0;
-  else index = index % deck.length;
-  updateUI();
-  setTimeout(speakWord, 100); // 自动发音
-}
-
-function markUnknown() {
-  const w = currentWord();
-  if (w === "该列表暂无未学单词") return;
-  if (!wrongWords.includes(w)) wrongWords.unshift(w);
-  dailyData[todayKey]++;
-  nextWord();
-}
-
-function toggleFavorite() {
-  const w = currentWord();
-  if (w === "该列表暂无未学单词") return;
-  favorites.includes(w)
-    ? favorites = favorites.filter(x => x !== w)
-    : favorites.unshift(w);
-  updateUI();
-}
-
-function shuffleWords() {
-  if (deck.length <= 1 || deck[0] === "该列表暂无未学单词") return;
-  for (let i = deck.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [deck[i], deck[j]] = [deck[j], deck[i]];
-  }
-  index = 0;
-  updateUI();
-  setTimeout(speakWord, 100);
-}
-
-function toggleAutoPlay() {
-  if (deck[0] === "该列表暂无未学单词") {
-    alert("当前列表暂无单词可播放");
-    return;
-  }
-  autoPlay = !autoPlay;
-  const btn = document.getElementById("autoBtn");
-  if (autoPlay) {
-    btn.innerText = "⏸️ 暂停";
-    setTimeout(speakWord, 100);
-    timer = setInterval(nextWord, autoPlayInterval);
-  } else {
-    btn.innerText = "▶️ 自动播放";
-    clearInterval(timer);
-  }
-}
-
-function updateInterval() {
-  const inp = document.getElementById("intervalInput");
-  const v = parseFloat(inp.value);
-  if (isNaN(v) || v < 1 || v > 30) {
-    alert("请输入1-30之间数字");
-    inp.value = autoPlayInterval / 1000;
-    return;
-  }
-  autoPlayInterval = v * 1000;
-  if (autoPlay) {
-    clearInterval(timer);
-    timer = setInterval(nextWord, autoPlayInterval);
-  }
-  alert(`已设置为 ${v} 秒`);
-}
-
-// CSV 导入导出
-function parseCSV(t) {
-  const l = t.split("\n").filter(x => x.trim());
-  const res = {};
-  if (l.length === 0) return res;
-  for (let i = 1; i < l.length; i++) {
-    let curr = "", inq = false, parts = [];
-    for (let c of l[i]) {
-      if (c === '"') inq = !inq;
-      else if (c === "," && !inq) {
-        parts.push(curr.trim());
-        curr = "";
-      } else curr += c;
-    }
-    parts.push(curr.trim());
-    if (parts.length >= 2 && parts[1]) {
-      const w = parts[1];
-      res[w] = {
-        transliteration: parts[2] || "暂无音标",
-        chinese: parts[3] || "暂无释义",
-        example: parts[4] || "No example"
-      };
-    }
-  }
-  return res;
-}
-
-function importFromFileContent(content, fileName) {
-  try {
-    const p = parseCSV(content);
-    if (Object.keys(p).length === 0) { alert("CSV为空或格式错误"); return false; }
-    wordDatabase = p;
-    words = Object.keys(p);
-    switchToList("unmastered");
-    showAutoImportStatus(`✅ 导入 ${words.length} 个单词，已自动云端备份`, "success");
-    if (cloudSyncEnabled && userId) {
-      setTimeout(() => {
-        const backupName = `导入单词库_${fileName.replace(/[\/:*?"<>|]/g, "_")}`;
-        createNewBackup(backupName);
-      }, 600);
-    }
-    return true;
-  } catch (e) { alert("CSV解析失败"); return false; }
-}
-
-function importCSV(e) {
-  if (isImporting) return;
-  const f = e.target.files[0]; if (!f) return;
-  e.target.value = ""; readFile(f);
-}
-
-function readFile(f) {
-  if (isImporting) return;
-  isImporting = true;
-  const r = new FileReader();
-  r.onload = ev => {
-    importFromFileContent(ev.target.result, f.name);
-    isImporting = false;
-  };
-  r.readAsText(f, "UTF-8");
-}
-
-function exportCSV() {
-  if (Object.keys(wordDatabase).length === 0) { alert("暂无单词可导出"); return; }
-  let csv = "No,words,transliteration,chinese,example sentence\n";
-  let n = 1;
-  for (let w in wordDatabase) {
-    const info = wordDatabase[w];
-    csv += `${n},${w},${info.transliteration},${info.chinese},${info.example}\n`;
-    n++;
-  }
-  const b = new Blob([csv], { type: "text/csv;charset=utf-8" });
-  const u = URL.createObjectURL(b);
-  const a = document.createElement("a");
-  a.href = u; a.download = `toeic_words_${getSafeDateKey()}.csv`;
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-}
-
-function resetMastered() {
-  if (confirm("⚠️ 重置将清空学习进度、收藏、错题，云端同步！建议先备份！")) {
-    mastered = {}; favorites = []; wrongWords = []; dailyData = {};
-    dailyData[todayKey] = 0;
-    saveData();
-    switchToList("unmastered");
-    alert("✅ 已重置并同步云端");
-  }
-}
-
-function showAutoImportStatus(msg, type) {
-  const el = document.getElementById("autoImportStatus");
-  if (!el) return;
-  clearTimeout(el.hideTimeout);
-  el.innerHTML = msg;
-  el.className = `auto-import-status ${type}`;
-  el.style.display = "flex";
-  el.hideTimeout = setTimeout(() => el.style.display = "none", 3000);
-}
-
-// 弹窗
-function showModal(id) { document.getElementById(id).classList.add("active"); }
-function closeModal(id) { document.getElementById(id).classList.remove("active"); }
-
-// 每日统计图表
-function showDailyChartModal() {
-  const dates = Object.keys(dailyData).sort();
-  const counts = dates.map(d => dailyData[d]);
-  const totalDays = dates.length;
-  const totalLearned = counts.reduce((a, b) => a + b, 0);
-  const avgDaily = totalDays > 0 ? Math.round(totalLearned / totalDays * 10) / 10 : 0;
-
-  if (dailyChart) dailyChart.destroy();
-  const ctx = document.getElementById("dailyChart");
-  if (!ctx) return;
-  const isDark = document.body.classList.contains("dark-theme");
-
-  dailyChart = new Chart(ctx.getContext("2d"), {
-    type: "line",
-    data: {
-      labels: dates,
-      datasets: [{
-        label: "每日学习单词数",
-        data: counts,
-        backgroundColor: "rgba(99,102,241,0.1)",
-        borderColor: "#6366f1",
-        borderWidth: 2,
-        tension: 0.4,
-        fill: true,
-        pointBackgroundColor: "#fff",
-        pointBorderColor: "#6366f1",
-        pointBorderWidth: 2,
-        pointRadius: 4
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      plugins: {
-        legend: { display: false },
-        tooltip: {
-          backgroundColor: isDark ? "#27272a" : "rgba(255,255,255,0.9)",
-          titleColor: isDark ? "#fafafa" : "#0f172a",
-          bodyColor: isDark ? "#a1a1aa" : "#64748b",
-          callbacks: {
-            title: ctx => ctx[0].label,
-            label: ctx => `学习了 ${ctx.raw} 个单词`
-          }
-        }
-      },
-      scales: {
-        y: {
-          beginAtZero: true,
-          ticks: { stepSize: 10, color: isDark ? "#a1a1aa" : "#64748b" },
-          grid: { color: isDark ? "rgba(255,255,255,0.1)" : "rgba(0,0,0,0.05)" }
-        },
-        x: {
-          grid: { display: false },
-          ticks: { color: isDark ? "#a1a1aa" : "#64748b" }
-        }
-      }
-    }
-  });
-  showModal("dailyChartModal");
-}
-
-// 云端备份完整函数
-async function createNewBackup(name = "") {
-  if (!cloudSyncEnabled || !userId) { alert("请先登录账号"); return; }
-  const bn = name || genBackupName();
-  const ts = Date.now();
-  const data = {
-    backupName: bn,
-    timestamp: ts,
-    wordDatabase: JSON.parse(JSON.stringify(wordDatabase)),
-    mastered: JSON.parse(JSON.stringify(mastered)),
-    favorites: JSON.parse(JSON.stringify(favorites)),
-    wrongWords: JSON.parse(JSON.stringify(wrongWords)),
-    dailyData: JSON.parse(JSON.stringify(dailyData))
-  };
-  try {
-    await database.ref(`users/${userId}/backups`).push(data);
-    showAutoImportStatus("✅ 云端备份创建成功", "success");
-    refreshBackupList();
-  } catch (e) { alert("备份上传失败：" + e.message); }
-}
-
-function genBackupName() {
-  const d = new Date();
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  const hour = String(d.getHours()).padStart(2, '0');
-  const min = String(d.getMinutes()).padStart(2, '0');
-  return `备份_${year}-${month}-${day}_${hour}-${min}`;
-}
-
-async function refreshBackupList() {
-  const el = document.getElementById("backupList");
-  if (!cloudSyncEnabled || !userId) {
-    el.innerHTML = '<div class="empty">请先登录账号使用云端备份</div>';
-    return;
-  }
-  try {
-    const snap = await database.ref(`users/${userId}/backups`).orderByChild("timestamp").once("value");
-    const d = snap.val() || {};
-    backupList = [];
-    for (let k in d) backupList.push({ key: k, ...d[k] });
-    backupList.sort((a, b) => b.timestamp - a.timestamp);
-    renderBackupList();
-  } catch (e) {
-    el.innerHTML = '<div class="empty">加载备份列表失败</div>';
-  }
-}
-
-function renderBackupList() {
-  const el = document.getElementById("backupList");
-  if (backupList.length === 0) {
-    el.innerHTML = '<div class="empty">暂无云端备份记录</div>';
-    return;
-  }
-  let html = "";
-  backupList.forEach(item => {
-    html += `<div class="backup-item">
-      <div class="backup-info">
-        <div class="backup-name">${item.backupName}</div>
-        <div class="backup-time">同步时间：${formatDisplayTime(item.timestamp)}</div>
-      </div>
-      <div class="backup-btn-group">
-        <button class="outline" onclick="restoreBackup('${item.key}')">恢复</button>
-        <button class="outline" onclick="deleteBackup('${item.key}')">删除</button>
-      </div>
-    </div>`;
-  });
-  el.innerHTML = html;
-}
-
-async function restoreBackup(key) {
-  if (!confirm("确定恢复此备份？将覆盖当前单词库+所有学习进度！建议先手动备份。")) return;
-  const item = backupList.find(x => x.key === key);
-  if (!item) return;
-  
-  wordDatabase = item.wordDatabase || {};
-  words = Object.keys(wordDatabase);
-  mastered = item.mastered || {};
-  favorites = item.favorites || [];
-  wrongWords = item.wrongWords || [];
-  dailyData = item.dailyData || {};
-  
-  if (!dailyData[todayKey]) dailyData[todayKey] = 0;
-  saveData(false);
-  switchToList(currentList);
-  updateUI();
-  showAutoImportStatus("✅ 已恢复备份", "success");
-}
-
-async function deleteBackup(key) {
-  if (!confirm("确定删除这条备份？删除后无法找回！")) return;
-  try {
-    await database.ref(`users/${userId}/backups/${key}`).remove();
-    showAutoImportStatus("✅ 备份已删除", "success");
-    refreshBackupList();
-  } catch (e) { alert("删除失败：" + e.message); }
-}
-
-// 初始化入口
-window.onload = function () {
-  initTheme();
-  initCollapsibleState();
-  switchToList("unmastered");
-  setupDragAndDrop();
-};
-
-function setupDragAndDrop() {
-  const z = document.getElementById("dropZone");
-  if (!z) return;
-  ["dragenter", "dragover", "dragleave", "drop"].forEach(n => z.addEventListener(n, e => e.preventDefault()));
-  ["dragenter", "dragover"].forEach(n => z.addEventListener(n, () => z.classList.add("active")));
-  ["dragleave", "drop"].forEach(n => z.addEventListener(n, () => z.classList.remove("active")));
-  z.addEventListener("drop", e => {
-    if (isImporting) return;
-    const f = e.dataTransfer.files;
-    if (f.length > 0 && f[0].name.endsWith(".csv")) readFile(f[0]);
-    else alert("请拖放CSV文件");
-  });
-}
-
-// 搜索功能
-const searchInput = document.getElementById("searchInput");
-if (searchInput) {
-  searchInput.addEventListener("input", function () {
-    const v = this.value.toLowerCase();
-    let baseList;
-    switch (currentList) {
-      case "unmastered": baseList = words.filter(w => !mastered[w]); break;
-      case "favorites": baseList = favorites.filter(w => !mastered[w]); break;
-      case "wrongWords": baseList = wrongWords.filter(w => !mastered[w]); break;
-    }
-    deck = baseList.filter(w => w.toLowerCase().includes(v));
-    if (deck.length === 0) deck = ["无匹配结果"];
-    index = 0;
-    reveal = false;
-    updateUI();
-    setTimeout(speakWord, 100);
-  });
-}
-
-// 仅允许每日统计图表和新建备份模态框点击外部关闭
-document.getElementById("dailyChartModal").addEventListener("click", function(e) {
-  if (e.target === this) {
-    closeModal("dailyChartModal");
-  }
-});
-
-document.getElementById("createBackupModal").addEventListener("click", function(e) {
-  if (e.target === this) {
-    closeModal("createBackupModal");
-  }
-});
-
-// 禁用ESC键关闭登录模态框
-document.addEventListener("keydown", function(e) {
-  if (e.key === "Escape" && document.getElementById("loginModal").classList.contains("active")) {
-    e.preventDefault();
-  }
-});
-</script>
+<!-- 隐藏Firebase配置 单独引入 -->
+<script src="firebase-config.js"></script>
+<script src="toeic.js"></script>
 </body>
 </html>
